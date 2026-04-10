@@ -60,6 +60,14 @@ const Usuario = sequelize.define('Usuario', {
   direcciones: {
     type: DataTypes.JSONB,
     defaultValue: []
+  },
+  rolId: {
+    type: DataTypes.INTEGER,
+    allowNull: true
+  },
+  proveedorId: {
+    type: DataTypes.INTEGER,
+    allowNull: true
   }
 }, {
   tableName: 'usuarios',

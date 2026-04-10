@@ -11,6 +11,24 @@ const Domicilio = require('./Domicilio');
 const OrdenCompra = require('./OrdenCompra');
 const Banner = require('./Banner');
 
+Proveedor.hasMany(Marca, { foreignKey: 'proveedorId', as: 'marcas' });
+Marca.belongsTo(Proveedor, { foreignKey: 'proveedorId', as: 'proveedor' });
+
+Categoria.hasMany(Producto, { foreignKey: 'categoriaId', as: 'productos' });
+Producto.belongsTo(Categoria, { foreignKey: 'categoriaId', as: 'categoria' });
+
+Marca.hasMany(Producto, { foreignKey: 'marcaId', as: 'productos' });
+Producto.belongsTo(Marca, { foreignKey: 'marcaId', as: 'marca' });
+
+Proveedor.hasMany(Producto, { foreignKey: 'proveedorId', as: 'productos' });
+Producto.belongsTo(Proveedor, { foreignKey: 'proveedorId', as: 'proveedor' });
+
+Rol.hasMany(Usuario, { foreignKey: 'rolId', as: 'usuarios' });
+Usuario.belongsTo(Rol, { foreignKey: 'rolId', as: 'rol' });
+
+Proveedor.hasMany(Usuario, { foreignKey: 'proveedorId', as: 'usuarios' });
+Usuario.belongsTo(Proveedor, { foreignKey: 'proveedorId', as: 'proveedor' });
+
 module.exports = {
   sequelize,
   Rol,

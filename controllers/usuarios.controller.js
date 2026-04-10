@@ -23,8 +23,8 @@ exports.listar = async (req, res) => {
     const usuarios = await Usuario.findAll({
       where,
       include: [
-        { model: Rol, attributes: ['nombre'] },
-        { model: Proveedor, attributes: ['nombre'], as: 'proveedor' }
+        { model: Rol, attributes: ['id', 'nombre'], as: 'rol' },
+        { model: Proveedor, attributes: ['id', 'nombre'], as: 'proveedor' }
       ],
       attributes: { exclude: ['password'] },
       order: [['createdAt', 'DESC']]

@@ -29,8 +29,8 @@ exports.listar = async (req, res) => {
     const productos = await Producto.findAll({
       where,
       include: [
-        { model: Categoria, attributes: ['nombre'] },
-        { model: Marca, attributes: ['nombre'] }
+        { model: Categoria, attributes: ['id', 'nombre'], as: 'categoria' },
+        { model: Marca, attributes: ['id', 'nombre'], as: 'marca' }
       ],
       order: [['createdAt', 'DESC']]
     });
