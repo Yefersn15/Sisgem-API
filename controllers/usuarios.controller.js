@@ -53,6 +53,13 @@ exports.crear = async (req, res) => {
       }
     }
 
+    // Buscar el rol por defecto dinámicamente
+    let defaultRolId = rolId;
+    if (!defaultRolId) {
+      const defaultRol = await Rol.findOne({ where: { esDefault: true, estado: true } });
+      defaultRolId = defaultRol ? defaultRol.id : 1;
+    }
+
     const nuevoUsuario = await Usuario.create({
       documento,
       tipoDocumento: tipoDocumento || 'CC',
@@ -64,7 +71,7 @@ exports.crear = async (req, res) => {
       genero,
       direccion,
       barrio,
-      rolId: rolId || 2,
+      rolId: defaultRolId,
       proveedorId: proveedorId || null,
       tipoVehiculo: tipoVehiculo || '',
       placa: placa || ''
@@ -72,8 +79,8 @@ exports.crear = async (req, res) => {
 
     const usuarioCreado = await Usuario.findByPk(nuevoUsuario.documento, {
       include: [
-        { model: Rol, attributes: ['nombre'] },
-        { model: Proveedor, attributes: ['nombre'], as: 'proveedor' }
+        { model: Rol, as: 'rol', attributes: ['id', 'nombre'] },
+        { model: Proveedor, as: 'proveedor', attributes: ['id', 'nombre'] }
       ],
       attributes: { exclude: ['password'] }
     });

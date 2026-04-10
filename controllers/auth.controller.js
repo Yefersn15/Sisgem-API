@@ -147,7 +147,8 @@ exports.me = async (req, res) => {
       genero: usuario.genero,
       direccion: usuario.direccion,
       barrio: usuario.barrio,
-      rol: usuario.Rol ? usuario.Rol.nombre : 'USUARIO',
+      rol: usuario.rol ? usuario.rol.nombre : 'USUARIO',
+      rol_id: usuario.rol ? usuario.rol.id : null,
       proveedor: usuario.proveedorId || null,
       estado: usuario.estado,
       createdAt: usuario.createdAt

@@ -26,18 +26,18 @@ const checkRole = (roles) => {
     if (Array.isArray(roles) && roles.every(r => typeof r === 'string')) {
       try {
         const usuario = await Usuario.findByPk(req.user.documento, {
-          include: [{ model: Rol }]
+          include: [{ model: Rol, as: 'rol' }]
         });
         
-        if (!usuario || !usuario.Rol) {
+        if (!usuario || !usuario.rol) {
           return res.status(403).json({ message: 'Usuario o rol no encontrado' });
         }
         
-        if (usuario.Rol.nombre === 'ADMIN') {
+        if (usuario.rol.nombre === 'ADMIN' || usuario.rol.nombre === 'ADMINISTRADOR') {
           return next();
         }
         
-        if (!roles.includes(usuario.Rol.nombre)) {
+        if (!roles.includes(usuario.rol.nombre)) {
           return res.status(403).json({ message: 'No tienes permiso para realizar esta acción' });
         }
         next();
@@ -58,18 +58,18 @@ const checkPermission = (permission) => {
 
     try {
       const usuario = await Usuario.findByPk(req.user.documento, {
-        include: [{ model: Rol }]
+        include: [{ model: Rol, as: 'rol' }]
       });
       
-      if (!usuario || !usuario.Rol) {
+      if (!usuario || !usuario.rol) {
         return res.status(403).json({ message: 'Usuario o rol no encontrado' });
       }
 
-      if (usuario.Rol.nombre === 'ADMIN') {
+      if (usuario.rol.nombre === 'ADMIN' || usuario.rol.nombre === 'ADMINISTRADOR') {
         return next();
       }
 
-      const permisos = usuario.Rol.permisos || [];
+      const permisos = usuario.rol.permisos || [];
       
       if (!permisos.includes(permission)) {
         return res.status(403).json({ 
@@ -99,14 +99,14 @@ const checkRoleOrPermission = (roles, permission) => {
     if (permission) {
       try {
         const usuario = await Usuario.findByPk(req.user.documento, {
-          include: [{ model: Rol }]
+          include: [{ model: Rol, as: 'rol' }]
         });
         
-        if (!usuario || !usuario.Rol) {
+        if (!usuario || !usuario.rol) {
           return res.status(403).json({ message: 'Usuario o rol no encontrado' });
         }
 
-        const permisos = usuario.Rol.permisos || [];
+        const permisos = usuario.rol.permisos || [];
         
         if (permisos.includes(permission)) {
           return next();
@@ -120,9 +120,27 @@ const checkRoleOrPermission = (roles, permission) => {
   };
 };
 
+// Middleware para permitir que el propio usuario se actualice o admin
+const allowSelfOrAdmin = (req, res, next) => {
+  if (!req.user) {
+    return res.status(401).json({ message: 'Acceso denegado. Autentícate primero' });
+  }
+  
+  const targetDocumento = req.params.id;
+  const currentDocumento = req.user.documento;
+  const userRol = req.user.rol;
+  
+  if (userRol === 'ADMIN' || targetDocumento === currentDocumento) {
+    return next();
+  }
+  
+  return res.status(403).json({ message: 'No autorizado para modificar este usuario' });
+};
+
 module.exports = {
   verifyToken,
   checkRole,
   checkPermission,
-  checkRoleOrPermission
+  checkRoleOrPermission,
+  allowSelfOrAdmin
 };
