@@ -5,8 +5,8 @@ exports.listar = async (req, res) => {
   try {
     const ordenes = await OrdenCompra.findAll({
       include: [
-        { model: Proveedor, attributes: ['nombre', 'nit'] },
-        { model: Usuario, attributes: ['nombre', 'email'] }
+        { model: Proveedor, as: 'proveedor', attributes: ['nombre', 'nit'] },
+        { model: Usuario, as: 'usuario', attributes: ['nombre', 'email'] }
       ],
       order: [['createdAt', 'DESC']]
     });
@@ -60,8 +60,8 @@ exports.crear = async (req, res) => {
 
     const ordenCreada = await OrdenCompra.findByPk(nuevaOrden.id, {
       include: [
-        { model: Proveedor, attributes: ['nombre', 'nit'] },
-        { model: Usuario, attributes: ['nombre', 'email'] }
+        { model: Proveedor, as: 'proveedor', attributes: ['nombre', 'nit'] },
+        { model: Usuario, as: 'usuario', attributes: ['nombre', 'email'] }
       ]
     });
 
@@ -78,8 +78,8 @@ exports.verDetalle = async (req, res) => {
 
     const orden = await OrdenCompra.findByPk(id, {
       include: [
-        { model: Proveedor, attributes: ['nombre', 'nit', 'email', 'telefono'] },
-        { model: Usuario, attributes: ['nombre', 'email'] }
+        { model: Proveedor, as: 'proveedor', attributes: ['nombre', 'nit', 'email', 'telefono'] },
+        { model: Usuario, as: 'usuario', attributes: ['nombre', 'email'] }
       ]
     });
 
@@ -261,8 +261,8 @@ exports.pedirMasStock = async (req, res) => {
     
     const ordenCreada = await OrdenCompra.findByPk(nuevaOrden.id, {
       include: [
-        { model: Proveedor, attributes: ['nombre', 'nit'] },
-        { model: Usuario, attributes: ['nombre', 'email'] }
+        { model: Proveedor, as: 'proveedor', attributes: ['nombre', 'nit'] },
+        { model: Usuario, as: 'usuario', attributes: ['nombre', 'email'] }
       ]
     });
     

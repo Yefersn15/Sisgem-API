@@ -20,6 +20,7 @@ const domicilioRoutes = require('./routes/domicilios.routes');
 const dashboardRoutes = require('./routes/dashboard.routes');
 const bannersRoutes = require('./routes/banners.routes');
 const ordenesCompraRoutes = require('./routes/ordenesCompra.routes');
+const carritoRoutes = require('./routes/carrito.routes');
 
 const app = express();
 
@@ -64,6 +65,7 @@ app.use('/api/domicilios', domicilioRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/banners', bannersRoutes);
 app.use('/api/ordenes-compra', ordenesCompraRoutes);
+app.use('/api/carrito', carritoRoutes);
 
 // Ruta de prueba
 app.get('/', (req, res) => {
