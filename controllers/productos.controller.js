@@ -46,6 +46,20 @@ exports.crear = async (req, res) => {
   try {
     const { nombre, descripcion, precio, stock, imagen, categoriaId, marcaId, proveedorId, estado, stockMinimo, precioCompra, codigoBarras } = req.body;
 
+    if (categoriaId) {
+      const categoria = await Categoria.findByPk(categoriaId);
+      if (!categoria) {
+        return errorResponse(res, 'Categoría no válida', 400);
+      }
+    }
+
+    if (marcaId) {
+      const marca = await Marca.findByPk(marcaId);
+      if (!marca) {
+        return errorResponse(res, 'Marca no válida', 400);
+      }
+    }
+
     let proveedorFinal = proveedorId;
     if (req.user && req.user.rol === 'PROVEEDOR') {
       if (!req.user.proveedor) {
@@ -71,8 +85,8 @@ exports.crear = async (req, res) => {
 
     const productoCreado = await Producto.findByPk(nuevoProducto.id, {
       include: [
-        { model: Categoria, attributes: ['nombre'] },
-        { model: Marca, attributes: ['nombre'] }
+        { model: Categoria, attributes: ['nombre'], as: 'categoria' },
+        { model: Marca, attributes: ['nombre'], as: 'marca' }
       ]
     });
 
