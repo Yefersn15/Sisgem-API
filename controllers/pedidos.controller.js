@@ -4,7 +4,12 @@ const { successResponse, errorResponse } = require('../utils/helpers');
 exports.crear = async (req, res) => {
   const t = await sequelize.transaction();
   try {
+    console.log('Crear pedido - body:', req.body);
     const { tipoVenta, productos, observaciones, metodoPago, telefonoContacto, direccion } = req.body;
+    
+    if (!productos || !Array.isArray(productos) || productos.length === 0) {
+      return errorResponse(res, 'Se requiere al menos un producto', 400);
+    }
 
     let subtotal = 0;
     const productosPedido = [];
@@ -64,7 +69,7 @@ exports.crear = async (req, res) => {
     await t.commit();
 
     const pedidoCreado = await Pedido.findByPk(nuevoPedido.id, {
-      include: [{ model: Usuario, attributes: ['nombre', 'email'] }]
+      include: [{ model: Usuario, as: 'usuario', attributes: ['nombre', 'email'] }]
     });
 
     return successResponse(res, pedidoCreado, 'Pedido creado', 201);
