@@ -9,11 +9,13 @@ const OrdenCompra = sequelize.define('OrdenCompra', {
   },
   proveedorId: {
     type: DataTypes.INTEGER,
-    allowNull: false
+    allowNull: false,
+    field: 'proveedor_id'
   },
   usuarioId: {
     type: DataTypes.STRING(20),
-    allowNull: false
+    allowNull: false,
+    field: 'usuario_id'
   },
   estado: {
     type: DataTypes.STRING(50),

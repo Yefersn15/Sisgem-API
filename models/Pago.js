@@ -9,7 +9,8 @@ const Pago = sequelize.define('Pago', {
   },
   pedidoId: {
     type: DataTypes.INTEGER,
-    allowNull: false
+    allowNull: false,
+    field: 'pedido_id'
   },
   monto: {
     type: DataTypes.DECIMAL(12, 2),
@@ -29,7 +30,8 @@ const Pago = sequelize.define('Pago', {
   },
   fechaPago: {
     type: DataTypes.DATE,
-    allowNull: true
+    allowNull: true,
+    field: 'fecha_pago'
   },
   tipo: {
     type: DataTypes.STRING(20),

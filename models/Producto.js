@@ -25,35 +25,43 @@ const Producto = sequelize.define('Producto', {
   },
   stockMinimo: {
     type: DataTypes.INTEGER,
-    defaultValue: 0
+    defaultValue: 0,
+    field: 'stock_minimo'
   },
   imagen: {
     type: DataTypes.TEXT,
-    allowNull: true
+    allowNull: true,
+    field: 'imagen'
   },
   imagenData: {
     type: DataTypes.BLOB,
-    allowNull: true
+    allowNull: true,
+    field: 'imagen_data'
   },
   codigoBarras: {
     type: DataTypes.STRING(50),
-    allowNull: true
+    allowNull: true,
+    field: 'codigo_barras'
   },
   precioCompra: {
     type: DataTypes.DECIMAL(12, 2),
-    allowNull: true
+    allowNull: true,
+    field: 'precio_compra'
   },
   categoriaId: {
     type: DataTypes.INTEGER,
-    allowNull: true
+    allowNull: true,
+    field: 'categoria_id'
   },
   marcaId: {
     type: DataTypes.INTEGER,
-    allowNull: true
+    allowNull: true,
+    field: 'marca_id'
   },
   proveedorId: {
     type: DataTypes.INTEGER,
-    allowNull: true
+    allowNull: true,
+    field: 'proveedor_id'
   },
   estado: {
     type: DataTypes.BOOLEAN,

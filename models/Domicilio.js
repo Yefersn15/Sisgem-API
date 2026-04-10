@@ -9,11 +9,13 @@ const Domicilio = sequelize.define('Domicilio', {
   },
   pedidoId: {
     type: DataTypes.INTEGER,
-    allowNull: false
+    allowNull: false,
+    field: 'pedido_id'
   },
   repartidorId: {
     type: DataTypes.STRING(20),
-    allowNull: true
+    allowNull: true,
+    field: 'repartidor_id'
   },
   direccion: {
     type: DataTypes.STRING(255),
@@ -45,7 +47,8 @@ const Domicilio = sequelize.define('Domicilio', {
   },
   tarifaAplicada: {
     type: DataTypes.DECIMAL(10, 2),
-    defaultValue: 0
+    defaultValue: 0,
+    field: 'tarifa_aplicada'
   },
   repartidor: {
     type: DataTypes.JSONB,
@@ -53,11 +56,13 @@ const Domicilio = sequelize.define('Domicilio', {
   },
   fechaAsignacion: {
     type: DataTypes.DATE,
-    allowNull: true
+    allowNull: true,
+    field: 'fecha_asignacion'
   },
   datosFront: {
     type: DataTypes.JSONB,
-    defaultValue: {}
+    defaultValue: {},
+    field: 'datos_front'
   }
 }, {
   tableName: 'domicilios',

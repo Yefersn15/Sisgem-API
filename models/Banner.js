@@ -9,11 +9,13 @@ const Banner = sequelize.define('Banner', {
   },
   imageUrl: {
     type: DataTypes.TEXT,
-    allowNull: false
+    allowNull: false,
+    field: 'image_url'
   },
   imageData: {
     type: DataTypes.BLOB,
-    allowNull: true
+    allowNull: true,
+    field: 'image_data'
   },
   titulo: {
     type: DataTypes.STRING(200),
@@ -21,7 +23,8 @@ const Banner = sequelize.define('Banner', {
   },
   displayOrder: {
     type: DataTypes.INTEGER,
-    defaultValue: 0
+    defaultValue: 0,
+    field: 'display_order'
   },
   estado: {
     type: DataTypes.BOOLEAN,

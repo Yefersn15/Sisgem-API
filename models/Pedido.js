@@ -9,15 +9,18 @@ const Pedido = sequelize.define('Pedido', {
   },
   usuarioId: {
     type: DataTypes.STRING(20),
-    allowNull: false
+    allowNull: false,
+    field: 'usuario_id'
   },
   telefonoContacto: {
     type: DataTypes.STRING(20),
-    allowNull: true
+    allowNull: true,
+    field: 'telefono_contacto'
   },
   metodoPago: {
     type: DataTypes.STRING(50),
-    allowNull: true
+    allowNull: true,
+    field: 'metodo_pago'
   },
   subtotal: {
     type: DataTypes.DECIMAL(12, 2),
@@ -29,23 +32,28 @@ const Pedido = sequelize.define('Pedido', {
   },
   totalPagado: {
     type: DataTypes.DECIMAL(12, 2),
-    defaultValue: 0
+    defaultValue: 0,
+    field: 'total_pagado'
   },
   estadoPedido: {
     type: DataTypes.STRING(50),
-    defaultValue: 'Pendiente'
+    defaultValue: 'Pendiente',
+    field: 'estado_pedido'
   },
   estadoVenta: {
     type: DataTypes.STRING(50),
-    defaultValue: 'Pendiente'
+    defaultValue: 'Pendiente',
+    field: 'estado_venta'
   },
   esVenta: {
     type: DataTypes.BOOLEAN,
-    defaultValue: true
+    defaultValue: true,
+    field: 'es_venta'
   },
   tipoVenta: {
     type: DataTypes.STRING(20),
-    defaultValue: 'mostrador'
+    defaultValue: 'mostrador',
+    field: 'tipo_venta'
   },
   observaciones: {
     type: DataTypes.TEXT,

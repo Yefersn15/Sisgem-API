@@ -26,11 +26,13 @@ const Marca = sequelize.define('Marca', {
   },
   sitioWeb: {
     type: DataTypes.STRING(255),
-    allowNull: true
+    allowNull: true,
+    field: 'sitio_web'
   },
   proveedorId: {
     type: DataTypes.INTEGER,
-    allowNull: true
+    allowNull: true,
+    field: 'proveedor_id'
   },
   estado: {
     type: DataTypes.BOOLEAN,

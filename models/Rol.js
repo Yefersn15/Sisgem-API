@@ -22,7 +22,8 @@ const Rol = sequelize.define('Rol', {
   },
   esDefault: {
     type: DataTypes.BOOLEAN,
-    defaultValue: false
+    defaultValue: false,
+    field: 'es_default'
   },
   estado: {
     type: DataTypes.BOOLEAN,

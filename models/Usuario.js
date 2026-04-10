@@ -10,7 +10,8 @@ const Usuario = sequelize.define('Usuario', {
   tipoDocumento: {
     type: DataTypes.STRING(10),
     allowNull: false,
-    defaultValue: 'CC'
+    defaultValue: 'CC',
+    field: 'tipo_documento'
   },
   nombre: {
     type: DataTypes.STRING(100),
@@ -51,11 +52,13 @@ const Usuario = sequelize.define('Usuario', {
   },
   fotoUrl: {
     type: DataTypes.TEXT,
-    allowNull: true
+    allowNull: true,
+    field: 'foto_url'
   },
   fotoData: {
     type: DataTypes.BLOB,
-    allowNull: true
+    allowNull: true,
+    field: 'foto_data'
   },
   direcciones: {
     type: DataTypes.JSONB,
@@ -63,11 +66,13 @@ const Usuario = sequelize.define('Usuario', {
   },
   rolId: {
     type: DataTypes.INTEGER,
-    allowNull: true
+    allowNull: true,
+    field: 'rol_id'
   },
   proveedorId: {
     type: DataTypes.INTEGER,
-    allowNull: true
+    allowNull: true,
+    field: 'proveedor_id'
   }
 }, {
   tableName: 'usuarios',
