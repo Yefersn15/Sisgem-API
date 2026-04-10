@@ -45,20 +45,20 @@ exports.agregarItem = async (req, res) => {
     const usuarioId = req.user.documento;
     let carrito = memoriaCarritos.get(usuarioId) || [];
 
-    const itemIndex = carrito.findIndex(item => item.productoId === parseInt(productoId));
+const itemIndex = carrito.findIndex(item => item.productoId === parseInt(productoId));
     if (itemIndex > -1) {
       const nuevaCantidad = carrito[itemIndex].cantidad + cantidad;
       if (nuevaCantidad > producto.stock) {
         return errorResponse(res, 'Stock insuficiente', 400);
       }
-      carousel[itemIndex].cantidad = nuevaCantidad;
+      carrito[itemIndex].cantidad = nuevaCantidad;
     } else {
-      carousel.push({ productoId: parseInt(productoId), cantidad });
+      carrito.push({ productoId: parseInt(productoId), cantidad });
     }
 
-    memoriaCarritos.set(usuarioId, carousel);
+    memoriaCarritos.set(usuarioId, carrito);
 
-    return successResponse(res, { items: carousel }, 'Producto agregado al carrito');
+    return successResponse(res, { items: carrito }, 'Producto agregado al carrito');
   } catch (error) {
     return errorResponse(res, error.message);
   }
@@ -75,15 +75,15 @@ exports.actualizarItem = async (req, res) => {
     if (producto.stock < cantidad) return errorResponse(res, 'Stock insuficiente', 400);
 
     const usuarioId = req.user.documento;
-    let carousel = memoriaCarritos.get(usuarioId) || [];
+    let carrito = memoriaCarritos.get(usuarioId) || [];
 
-    const itemIndex = carousel.findIndex(item => item.productoId === parseInt(productoId));
+    const itemIndex = carrito.findIndex(item => item.productoId === parseInt(productoId));
     if (itemIndex === -1) return errorResponse(res, 'Producto no está en el carrito', 404);
 
-    carousel[itemIndex].cantidad = cantidad;
-    memoriaCarritos.set(usuarioId, carousel);
+    carrito[itemIndex].cantidad = cantidad;
+    memoriaCarritos.set(usuarioId, carrito);
 
-    return successResponse(res, { items: carousel }, 'Cantidad actualizada');
+    return successResponse(res, { items: carrito }, 'Cantidad actualizada');
   } catch (error) {
     return errorResponse(res, error.message);
   }
@@ -93,12 +93,12 @@ exports.eliminarItem = async (req, res) => {
   try {
     const { productoId } = req.params;
     const usuarioId = req.user.documento;
-    let carousel = memoriaCarritos.get(usuarioId) || [];
+    let carrito = memoriaCarritos.get(usuarioId) || [];
 
-    carousel = carousel.filter(item => item.productoId !== parseInt(productoId));
-    memoriaCarritos.set(usuarioId, carousel);
+    carrito = carrito.filter(item => item.productoId !== parseInt(productoId));
+    memoriaCarritos.set(usuarioId, carrito);
 
-    return successResponse(res, { items: carousel }, 'Producto eliminado del carrito');
+    return successResponse(res, { items: carrito }, 'Producto eliminado del carrito');
   } catch (error) {
     return errorResponse(res, error.message);
   }

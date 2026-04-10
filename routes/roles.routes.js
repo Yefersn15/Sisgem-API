@@ -15,7 +15,11 @@ router.post('/seed', rolesController.seedRoles);
 // Rutas protegidas - Solo admin
 router.get('/', verifyToken, checkRole(['ADMIN']), rolesController.listar);
 router.post('/', verifyToken, checkRole(['ADMIN']), rolesController.crear);
-router.get('/:id', verifyToken, checkRole(['ADMIN']), rolesController.verDetalle);
+
+// Ruta protegida - usuario autenticado puede ver detalle de cualquier rol
+router.get('/:id', verifyToken, rolesController.verDetalle);
+
+// Rutas protegidas - Solo admin
 router.put('/:id', verifyToken, checkRole(['ADMIN']), rolesController.actualizar);
 router.delete('/:id', verifyToken, checkRole(['ADMIN']), rolesController.eliminar);
 router.patch('/:id/estado', verifyToken, checkRole(['ADMIN']), rolesController.cambiarEstado);
