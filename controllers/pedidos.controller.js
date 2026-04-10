@@ -121,7 +121,7 @@ exports.listarVentas = async (req, res) => {
   try {
     const pedidos = await Pedido.findAll({
       where: { esVenta: true },
-      include: [{ model: Usuario, attributes: ['documento', 'nombre', 'email', 'telefono'] }],
+      include: [{ model: Usuario, as: 'usuario', attributes: ['documento', 'nombre', 'email', 'telefono'] }],
       order: [['createdAt', 'DESC']]
     });
 

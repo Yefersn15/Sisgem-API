@@ -103,16 +103,18 @@ exports.login = async (req, res) => {
       { expiresIn: process.env.JWT_EXPIRES_IN || '1d' }
     );
 
-    const usuarioData = {
+const usuarioData = {
       documento: usuario.documento,
       tipoDocumento: usuario.tipoDocumento,
       nombre: usuario.nombre,
       apellido: usuario.apellido,
       email: usuario.email,
       telefono: usuario.telefono,
-      rol: usuario.Rol ? usuario.Rol.nombre : 'USUARIO',
+      rol: usuario.rol ? usuario.rol.nombre : 'USUARIO',
+      rol_id: usuario.rol ? usuario.rol.id : null,
       proveedor: usuario.proveedorId || null,
-      estado: usuario.estado
+      estado: usuario.estado,
+      createdAt: usuario.createdAt
     };
 
     return successResponse(res, { token, usuario: usuarioData }, 'Login exitoso');
@@ -126,7 +128,7 @@ exports.me = async (req, res) => {
   try {
     const usuario = await Usuario.findByPk(req.user.documento, {
       include: [
-        { model: Rol },
+        { model: Rol, as: 'rol' },
         { model: Proveedor, as: 'proveedor', attributes: ['nombre'] }
       ]
     });

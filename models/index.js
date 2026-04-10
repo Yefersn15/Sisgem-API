@@ -26,6 +26,9 @@ Producto.belongsTo(Proveedor, { foreignKey: 'proveedorId', as: 'proveedor' });
 Rol.hasMany(Usuario, { foreignKey: 'rolId', as: 'usuarios' });
 Usuario.belongsTo(Rol, { foreignKey: 'rolId', as: 'rol' });
 
+Usuario.hasMany(Pedido, { foreignKey: 'usuarioId', as: 'pedidos' });
+Pedido.belongsTo(Usuario, { foreignKey: 'usuarioId', as: 'usuario' });
+
 Proveedor.hasMany(Usuario, { foreignKey: 'proveedorId', as: 'usuarios' });
 Usuario.belongsTo(Proveedor, { foreignKey: 'proveedorId', as: 'proveedor' });
 
