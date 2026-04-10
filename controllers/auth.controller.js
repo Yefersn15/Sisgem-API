@@ -65,12 +65,12 @@ exports.login = async (req, res) => {
     if (documento) {
       usuario = await Usuario.findOne({ 
         where: { documento },
-        include: [{ model: Rol }]
+        include: [{ model: Rol, as: 'rol', attributes: ['id', 'nombre'] }]
       });
     } else if (email) {
       usuario = await Usuario.findOne({ 
         where: { email },
-        include: [{ model: Rol }]
+        include: [{ model: Rol, as: 'rol', attributes: ['id', 'nombre'] }]
       });
     }
     
