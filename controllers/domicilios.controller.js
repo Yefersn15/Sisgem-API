@@ -75,7 +75,7 @@ exports.crear = async (req, res) => {
       telefono: telefono || '',
       costo: tarifaAplicada,
       tarifaAplicada: tarifaAplicada,
-      repartidor: repartidorData ? JSON.stringify(repartidorData) : null,
+      repartidor: repartidorData || null,
       repartidorId: repartidor?.id || null,
       estado: repartidorData && repartidorData.nombre ? 'asignado' : 'Pendiente'
     }, { transaction: t });
@@ -225,7 +225,7 @@ exports.asignarRepartidor = async (req, res) => {
     }
 
     await Domicilio.update({
-      repartidor: JSON.stringify(repartidorObj),
+      repartidor: repartidorObj,
       repartidorId: repartidorId || null,
       fechaAsignacion: new Date()
     }, { where: { id: domicilio.id }, transaction: t });
@@ -368,12 +368,12 @@ exports.actualizar = async (req, res) => {
     }
 
     if (body.repartidor && typeof body.repartidor === 'object') {
-      body.repartidor = JSON.stringify({
+      body.repartidor = {
         nombre: body.repartidor.nombre || '',
         telefono: body.repartidor.telefono || '',
         tipoVehiculo: body.repartidor.tipoVehiculo || '',
         placa: body.repartidor.placa || ''
-      });
+      };
       body.fechaAsignacion = new Date();
     }
 

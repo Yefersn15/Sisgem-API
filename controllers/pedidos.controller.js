@@ -27,9 +27,14 @@ exports.crear = async (req, res) => {
         subtotal: itemSubtotal
       });
 
-      const isStaff = req.user && ['ADMIN', 'EMPLEADO'].includes(req.user.rol);
-      if (isStaff) {
-        await producto.update({ stock: producto.stock - item.cantidad }, { transaction: t });
+      const esVentaInmediata = metodoPago !== 'Abono' && tipoVenta !== 'domicilio';
+      if (esVentaInmediata) {
+        const nuevoStock = producto.stock - item.cantidad;
+        if (nuevoStock < 0) {
+          await t.rollback();
+          return errorResponse(res, `Stock insuficiente para producto ${producto.nombre}`, 400);
+        }
+        await producto.update({ stock: nuevoStock }, { transaction: t });
       }
     }
 
@@ -153,6 +158,10 @@ exports.verDetalle = async (req, res) => {
 
     if (!pedido) return errorResponse(res, 'Pedido no encontrado', 404);
 
+    if (req.user.rol !== 'ADMIN' && pedido.usuarioId !== req.user.documento) {
+      return errorResponse(res, 'No autorizado', 403);
+    }
+
     return successResponse(res, pedido);
   } catch (error) {
     return errorResponse(res, error.message);
@@ -181,20 +190,42 @@ exports.aprobarSolicitudAbono = async (req, res) => {
 };
 
 exports.convertirAVenta = async (req, res) => {
+  const t = await sequelize.transaction();
   try {
     const { id } = req.params;
 
-    const pedido = await Pedido.findByPk(id);
-    if (!pedido) return errorResponse(res, 'Pedido no encontrado', 404);
-    if (pedido.esVenta) return errorResponse(res, 'Ya es una venta', 400);
+    const pedido = await Pedido.findByPk(id, { transaction: t });
+    if (!pedido) {
+      await t.rollback();
+      return errorResponse(res, 'Pedido no encontrado', 404);
+    }
+    if (pedido.esVenta) {
+      await t.rollback();
+      return errorResponse(res, 'Ya es una venta', 400);
+    }
+
+    const productos = pedido.productos || [];
+    for (const item of productos) {
+      const producto = await Producto.findByPk(item.producto, { transaction: t });
+      if (producto) {
+        const nuevoStock = producto.stock - item.cantidad;
+        if (nuevoStock < 0) {
+          await t.rollback();
+          return errorResponse(res, `Stock insuficiente para producto ${producto.nombre}`, 400);
+        }
+        await producto.update({ stock: nuevoStock }, { transaction: t });
+      }
+    }
 
     await pedido.update({
       esVenta: true,
       estadoVenta: 'completada'
-    });
+    }, { transaction: t });
 
+    await t.commit();
     return successResponse(res, pedido, 'Convertido a venta');
   } catch (error) {
+    await t.rollback();
     return errorResponse(res, error.message);
   }
 };
@@ -254,16 +285,40 @@ exports.cancelar = async (req, res) => {
 };
 
 exports.aprobarPedido = async (req, res) => {
+  const t = await sequelize.transaction();
   try {
     const { id } = req.params;
 
-    const pedido = await Pedido.findByPk(id);
-    if (!pedido) return errorResponse(res, 'Pedido no encontrado', 404);
+    const pedido = await Pedido.findByPk(id, { transaction: t });
+    if (!pedido) {
+      await t.rollback();
+      return errorResponse(res, 'Pedido no encontrado', 404);
+    }
 
-    await pedido.update({ estadoPedido: 'aprobado' });
+    if (pedido.estadoPedido !== 'Pendiente') {
+      await t.rollback();
+      return errorResponse(res, 'El pedido ya fue procesado', 400);
+    }
 
+    const productos = pedido.productos || [];
+    for (const item of productos) {
+      const producto = await Producto.findByPk(item.producto, { transaction: t });
+      if (producto) {
+        const nuevoStock = producto.stock - item.cantidad;
+        if (nuevoStock < 0) {
+          await t.rollback();
+          return errorResponse(res, `Stock insuficiente para producto ${producto.nombre}`, 400);
+        }
+        await producto.update({ stock: nuevoStock }, { transaction: t });
+      }
+    }
+
+    await pedido.update({ estadoPedido: 'aprobado' }, { transaction: t });
+
+    await t.commit();
     return successResponse(res, pedido, 'Pedido aprobado');
   } catch (error) {
+    await t.rollback();
     return errorResponse(res, error.message);
   }
 };

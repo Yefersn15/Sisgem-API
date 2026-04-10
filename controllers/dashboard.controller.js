@@ -207,10 +207,10 @@ exports.domiciliosEficiencia = async (req, res) => {
       }
     });
     
-    const totalDomicilios = domicilios.length;
-    const entregados = domicilio.filter(d => d.estado === 'entregado').length;
+const totalDomicilios = domicilios.length;
+    const entregados = domicilios.filter(d => d.estado === 'entregado').length;
     const enCamino = domicilios.filter(d => d.estado === 'en_camino').length;
-    const asignados = domicilio.filter(d => d.estado === 'asignado').length;
+    const asignados = domicilios.filter(d => d.estado === 'asignado').length;
     
     return successResponse(res, {
       totalDomicilios,

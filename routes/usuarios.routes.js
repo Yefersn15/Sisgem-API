@@ -9,7 +9,7 @@ const { verifyToken, checkRole, allowSelfOrAdmin } = require('../middlewares/aut
 router.get('/', verifyToken, checkRole(['ADMIN']), usuariosController.listar);
 router.post('/', verifyToken, checkRole(['ADMIN']), usuariosController.crear);
 router.get('/documento/:documento', verifyToken, checkRole(['ADMIN']), usuariosController.verDetallePorDocumento);
-router.get('/:id', verifyToken, usuariosController.verDetalle);
+router.get('/:id', verifyToken, allowSelfOrAdmin, usuariosController.verDetalle);
 // PUT permite admin O el propio usuario
 router.put('/:id', verifyToken, allowSelfOrAdmin, usuariosController.actualizar);
 router.delete('/:id', verifyToken, checkRole(['ADMIN']), usuariosController.eliminar);

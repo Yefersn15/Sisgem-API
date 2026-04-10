@@ -3,8 +3,8 @@ const router = express.Router();
 const pedidosController = require('../controllers/pedidos.controller');
 const { verifyToken, checkRole } = require('../middlewares/auth');
 
-router.get('/', verifyToken, pedidosController.listarPedidos); // pedidos activos
-router.get('/ventas', verifyToken, pedidosController.listarVentas); // ventas
+router.get('/', verifyToken, checkRole(['ADMIN']), pedidosController.listarPedidos); // pedidos activos - solo ADMIN
+router.get('/ventas', verifyToken, checkRole(['ADMIN']), pedidosController.listarVentas); // ventas - solo ADMIN
 router.get('/mis-pedidos', verifyToken, pedidosController.misPedidos);
 router.post('/', verifyToken, pedidosController.crear);
 router.get('/:id', verifyToken, pedidosController.verDetalle);

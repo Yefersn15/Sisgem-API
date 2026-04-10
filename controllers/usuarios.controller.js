@@ -39,7 +39,7 @@ exports.listar = async (req, res) => {
 
 exports.crear = async (req, res) => {
   try {
-    const { nombre, email, password, telefono, apellido, rolId, documento, tipoVehiculo, placa, proveedorId, tipoDocumento, genero, direccion, barrio } = req.body;
+    const { nombre, email, password, telefono, apellido, rolId, documento, proveedorId, tipoDocumento, genero, direccion, barrio } = req.body;
 
     const existeUsuario = await Usuario.findOne({ where: { email } });
     if (existeUsuario) {
@@ -72,9 +72,7 @@ exports.crear = async (req, res) => {
       direccion,
       barrio,
       rolId: defaultRolId,
-      proveedorId: proveedorId || null,
-      tipoVehiculo: tipoVehiculo || '',
-      placa: placa || ''
+      proveedorId: proveedorId || null
     });
 
     const usuarioCreado = await Usuario.findByPk(nuevoUsuario.documento, {
@@ -142,7 +140,7 @@ exports.verDetalle = async (req, res) => {
 exports.actualizar = async (req, res) => {
   try {
     const { id } = req.params;
-    const { nombre, apellido, telefono, rolId, email, documento, tipoVehiculo, placa, proveedorId, tipoDocumento, genero, direccion, barrio, estado } = req.body;
+    const { nombre, apellido, telefono, rolId, email, proveedorId, tipoDocumento, genero, direccion, barrio, estado } = req.body;
 
     const usuario = await Usuario.findByPk(id);
     if (!usuario) {
@@ -156,26 +154,16 @@ exports.actualizar = async (req, res) => {
       }
     }
 
-    if (documento && documento !== id) {
-      const existeDocumento = await Usuario.findByPk(documento);
-      if (existeDocumento) {
-        return errorResponse(res, 'El documento ya está en uso', 400);
-      }
-    }
-
     await usuario.update({
       nombre: nombre || usuario.nombre,
       apellido: apellido !== undefined ? apellido : usuario.apellido,
       telefono: telefono !== undefined ? telefono : usuario.telefono,
       rolId: rolId || usuario.rolId,
       email: email || usuario.email,
-      documento: documento || usuario.documento,
       tipoDocumento: tipoDocumento || usuario.tipoDocumento,
       genero: genero !== undefined ? genero : usuario.genero,
       direccion: direccion !== undefined ? direccion : usuario.direccion,
       barrio: barrio !== undefined ? barrio : usuario.barrio,
-      tipoVehiculo: tipoVehiculo !== undefined ? tipoVehiculo : usuario.tipoVehiculo,
-      placa: placa !== undefined ? placa : usuario.placa,
       proveedorId: proveedorId !== undefined ? (proveedorId || null) : usuario.proveedorId,
       estado: estado !== undefined ? estado : usuario.estado
     });

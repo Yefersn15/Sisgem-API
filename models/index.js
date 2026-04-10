@@ -32,6 +32,18 @@ Pedido.belongsTo(Usuario, { foreignKey: 'usuarioId', as: 'usuario' });
 Proveedor.hasMany(Usuario, { foreignKey: 'proveedorId', as: 'usuarios' });
 Usuario.belongsTo(Proveedor, { foreignKey: 'proveedorId', as: 'proveedor' });
 
+Pedido.hasMany(Pago, { foreignKey: 'pedidoId', as: 'pagos' });
+Pago.belongsTo(Pedido, { foreignKey: 'pedidoId', as: 'pedido' });
+
+Pedido.hasOne(Domicilio, { foreignKey: 'pedidoId', as: 'domicilio' });
+Domicilio.belongsTo(Pedido, { foreignKey: 'pedidoId', as: 'pedido' });
+
+Proveedor.hasMany(OrdenCompra, { foreignKey: 'proveedorId', as: 'ordenes' });
+OrdenCompra.belongsTo(Proveedor, { foreignKey: 'proveedorId', as: 'proveedor' });
+
+Usuario.hasMany(OrdenCompra, { foreignKey: 'usuarioId', as: 'ordenes' });
+OrdenCompra.belongsTo(Usuario, { foreignKey: 'usuarioId', as: 'usuario' });
+
 module.exports = {
   sequelize,
   Rol,
