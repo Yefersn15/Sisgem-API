@@ -58,12 +58,12 @@ exports.crear = async (req, res) => {
       esVenta,
       estadoVenta: esVenta ? 'completada' : null,
       telefonoContacto,
-      direccion: direccion ? JSON.stringify({
+      direccion: direccion ? {
         direccion: direccion.direccion || direccion,
         direccion2: direccion.direccion2 || '',
         barrio: direccion.barrio,
         telefono: direccion.telefono
-      }) : null
+      } : null
     }, { transaction: t });
 
     await t.commit();
