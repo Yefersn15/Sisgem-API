@@ -18,7 +18,7 @@ exports.obtenerCarrito = async (req, res) => {
           producto: {
             id: producto.id,
             nombre: producto.nombre,
-            precio: producto.precio,
+            precio: parseFloat(producto.precio) || 0,
             imagen: producto.imagen,
             stock: producto.stock
           }
