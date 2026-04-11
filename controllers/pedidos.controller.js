@@ -1,4 +1,4 @@
-const { Pedido, Producto, Usuario, sequelize } = require('../models');
+const { Pedido, Producto, Usuario, Domicilio, sequelize } = require('../models');
 const { successResponse, errorResponse } = require('../utils/helpers');
 
 exports.crear = async (req, res) => {
@@ -209,18 +209,46 @@ exports.verDetalle = async (req, res) => {
 };
 
 exports.aprobarAbono = async (req, res) => {
+  const t = await sequelize.transaction();
   try {
     const { id } = req.params;
 
-    const pedido = await Pedido.findByPk(id);
-    if (!pedido) return errorResponse(res, 'Pedido no encontrado', 404);
-    if (pedido.esVenta) return errorResponse(res, 'Ya es una venta', 400);
-    if (pedido.estadoPedido !== 'Pendiente') return errorResponse(res, 'El pedido ya fue procesado', 400);
+    const pedido = await Pedido.findByPk(id, { transaction: t });
+    if (!pedido) {
+      await t.rollback();
+      return errorResponse(res, 'Pedido no encontrado', 404);
+    }
+    if (pedido.esVenta) {
+      await t.rollback();
+      return errorResponse(res, 'Ya es una venta', 400);
+    }
+    if (pedido.estadoPedido !== 'Pendiente') {
+      await t.rollback();
+      return errorResponse(res, 'El pedido ya fue procesado', 400);
+    }
 
-    await pedido.update({ estadoPedido: 'aprobado' });
+    await pedido.update({ estadoPedido: 'aprobado' }, { transaction: t });
 
+    if (pedido.tipoVenta === 'domicilio') {
+      const direccion = pedido.direccion;
+      await Domicilio.create({
+        pedidoId: pedido.id,
+        direccion: direccion?.direccion || '',
+        direccion2: direccion?.direccion2 || '',
+        barrio: direccion?.barrio || '',
+        ciudad: '',
+        telefono: direccion?.telefono || pedido.telefonoContacto,
+        estado: 'Pendiente',
+        costo: 0,
+        tarifa_aplicada: 0,
+        datos_front: direccion
+      }, { transaction: t });
+    }
+
+    await t.commit();
     return successResponse(res, pedido, 'Pedido aprobado - flujo de domicilio');
   } catch (error) {
+    await t.rollback();
     return errorResponse(res, error.message);
   }
 };
