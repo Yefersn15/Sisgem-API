@@ -5,7 +5,9 @@ exports.crear = async (req, res) => {
   const t = await sequelize.transaction();
   try {
     console.log('Crear pedido - body:', req.body);
-    const { tipoVenta, productos, observaciones, metodoPago, telefonoContacto, direccion } = req.body;
+    const { tipo_venta, productos, observaciones, metodo_pago, telefonoContacto, direccion } = req.body;
+    const metodoPago = metodo_pago;
+    const tipoVenta = tipo_venta;
     
     if (!productos || !Array.isArray(productos) || productos.length === 0) {
       return errorResponse(res, 'Se requiere al menos un producto', 400);
