@@ -175,52 +175,20 @@ exports.verDetalle = async (req, res) => {
   }
 };
 
-exports.aprobarSolicitudAbono = async (req, res) => {
-  const t = await sequelize.transaction();
+exports.aprobarAbono = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const pedido = await Pedido.findByPk(id, { transaction: t });
-    if (!pedido) {
-      await t.rollback();
-      return errorResponse(res, 'Pedido no encontrado', 404);
-    }
-    if (pedido.esVenta) {
-      await t.rollback();
-      return errorResponse(res, 'No es un pedido por abono', 400);
-    }
-    if (pedido.metodoPago !== 'Abono') {
-      await t.rollback();
-      return errorResponse(res, 'Solo se pueden aprobar pedidos por abono', 400);
-    }
-    if (pedido.estadoPedido !== 'Pendiente') {
-      await t.rollback();
-      return errorResponse(res, 'El pedido ya fue procesado', 400);
-    }
+    const pedido = await Pedido.findByPk(id);
+    if (!pedido) return errorResponse(res, 'Pedido no encontrado', 404);
+    if (pedido.esVenta) return errorResponse(res, 'Ya es una venta', 400);
+    if (pedido.metodoPago !== 'Abono') return errorResponse(res, 'Solo se pueden aprobar pedidos por abono', 400);
+    if (pedido.estadoPedido !== 'Pendiente') return errorResponse(res, 'El pedido ya fue procesado', 400);
 
-    const productos = pedido.productos || [];
-    for (const item of productos) {
-      const producto = await Producto.findByPk(item.producto, { transaction: t });
-      if (producto) {
-        const nuevoStock = producto.stock - item.cantidad;
-        if (nuevoStock < 0) {
-          await t.rollback();
-          return errorResponse(res, `Stock insuficiente para producto ${producto.nombre}`, 400);
-        }
-        await producto.update({ stock: nuevoStock }, { transaction: t });
-      }
-    }
+    await pedido.update({ estadoPedido: 'aprobado' });
 
-    await pedido.update({
-      esVenta: true,
-      estadoVenta: 'completada',
-      estadoPedido: 'aprobado'
-    }, { transaction: t });
-
-    await t.commit();
-    return successResponse(res, pedido, 'Abono aprobado - stock reducido');
+    return successResponse(res, pedido, 'Abono aprovado - espera pago del cliente');
   } catch (error) {
-    await t.rollback();
     return errorResponse(res, error.message);
   }
 };

@@ -1,4 +1,4 @@
-const { Pago, Pedido, Usuario, sequelize } = require('../models');
+const { Pago, Pedido, Producto, Usuario, sequelize } = require('../models');
 const { successResponse, errorResponse } = require('../utils/helpers');
 
 async function actualizarTotalPagado(pedidoId) {
@@ -60,6 +60,18 @@ exports.crear = async (req, res) => {
       const pedido = await Pedido.findByPk(nuevoPago.pedidoId, { transaction: t });
       if (pedido && pedido.metodoPago === 'Abono' && !pedido.esVenta) {
         if (pedido.totalPagado >= pedido.total) {
+          const productos = pedido.productos || [];
+          for (const item of productos) {
+            const producto = await Producto.findByPk(item.producto, { transaction: t });
+            if (producto) {
+              const nuevoStock = producto.stock - item.cantidad;
+              if (nuevoStock < 0) {
+                await t.rollback();
+                return errorResponse(res, `Stock insuficiente para producto ${producto.nombre}`, 400);
+              }
+              await producto.update({ stock: nuevoStock }, { transaction: t });
+            }
+          }
           await pedido.update({ esVenta: true, estadoVenta: 'completada' }, { transaction: t });
         }
       }
@@ -120,6 +132,18 @@ exports.actualizar = async (req, res) => {
       const pedido = await Pedido.findByPk(pago.pedidoId, { transaction: t });
       if (pedido && pedido.metodoPago === 'Abono' && !pedido.esVenta) {
         if (pedido.totalPagado >= pedido.total) {
+          const productos = pedido.productos || [];
+          for (const item of productos) {
+            const producto = await Producto.findByPk(item.producto, { transaction: t });
+            if (producto) {
+              const nuevoStock = producto.stock - item.cantidad;
+              if (nuevoStock < 0) {
+                await t.rollback();
+                return errorResponse(res, `Stock insuficiente para producto ${producto.nombre}`, 400);
+              }
+              await producto.update({ stock: nuevoStock }, { transaction: t });
+            }
+          }
           await pedido.update({ esVenta: true, estadoVenta: 'completada' }, { transaction: t });
         }
       }
@@ -157,6 +181,24 @@ exports.cambiarEstado = async (req, res) => {
 
     if (oldEstado !== 'aplicado' && estado === 'aplicado') {
       await actualizarTotalPagado(pago.pedidoId, { transaction: t });
+      const pedido = await Pedido.findByPk(pago.pedidoId, { transaction: t });
+      if (pedido && pedido.metodoPago === 'Abono' && !pedido.esVenta) {
+        if (pedido.totalPagado >= pedido.total) {
+          const productos = pedido.productos || [];
+          for (const item of productos) {
+            const producto = await Producto.findByPk(item.producto, { transaction: t });
+            if (producto) {
+              const nuevoStock = producto.stock - item.cantidad;
+              if (nuevoStock < 0) {
+                await t.rollback();
+                return errorResponse(res, `Stock insuficiente para producto ${producto.nombre}`, 400);
+              }
+              await producto.update({ stock: nuevoStock }, { transaction: t });
+            }
+          }
+          await pedido.update({ esVenta: true, estadoVenta: 'completada' }, { transaction: t });
+        }
+      }
     } else if (oldEstado === 'aplicado' && estado !== 'aplicado') {
       await actualizarTotalPagado(pago.pedidoId, { transaction: t });
     }

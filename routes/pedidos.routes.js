@@ -12,8 +12,9 @@ router.put('/:id', verifyToken, checkRole(['ADMIN']), pedidosController.actualiz
 router.delete('/:id', verifyToken, checkRole(['ADMIN']), pedidosController.cancelar);
 router.patch('/:id/estado', verifyToken, checkRole(['ADMIN']), pedidosController.cambiarEstadoPedido);
 router.post('/:id/convertir-venta', verifyToken, checkRole(['ADMIN']), pedidosController.convertirAVenta);
-router.patch('/:id/aprobar-abono', verifyToken, checkRole(['ADMIN']), pedidosController.aprobarSolicitudAbono);
+router.patch('/:id/aprobar-abono', verifyToken, checkRole(['ADMIN']), pedidosController.aprobarAbono);
+router.patch('/:id/aprobar', verifyToken, checkRole(['ADMIN']), pedidosController.aprobarAbono);
 router.patch('/:id/rechazar-abono', verifyToken, checkRole(['ADMIN']), pedidosController.rechazarAbono);
-router.patch('/:id/aprobar', verifyToken, checkRole(['ADMIN']), pedidosController.aprobarPedido);
+router.patch('/:id/rechazar', verifyToken, checkRole(['ADMIN']), pedidosController.rechazarAbono);
 
 module.exports = router;
