@@ -50,9 +50,9 @@ exports.crear = async (req, res) => {
       return errorResponse(res, 'Pedido no encontrado', 404);
     }
 
-    if ((pedido.metodoPago === 'Abono' || pedido.tipoVenta === 'domicilio') && pedido.estadoPedido !== 'entregado') {
+    if (pedido.tipoVenta === 'domicilio' && !['aprobado', 'en_preparacion', 'asignado', 'en_camino', 'entregado'].includes(pedido.estadoPedido)) {
       await t.rollback();
-      return errorResponse(res, 'No se puede registrar pago. El pedido de domicilio debe estar entregado primero.', 400);
+      return errorResponse(res, `No se puede registrar pago. El pedido de domicilio debe tener un repartidor asignado (actual: ${pedido.estadoPedido}).`, 400);
     }
 
     const nuevoPago = await Pago.create({
