@@ -186,9 +186,11 @@ exports.asignarRepartidor = async (req, res) => {
   try {
     const { id } = req.params;
     const { repartidor, repartidorId, tarifa, telefono, tipoVehiculo, placa, nombre } = req.body;
+    console.log('[asignarRepartidor] id:', id, 'repartidor:', repartidor);
 
     let domicilio = await Domicilio.findByPk(id, { transaction: t });
     if (!domicilio) {
+      console.log('[asignarRepartidor] No found by pk, trying pedidoId:', id);
       domicilio = await Domicilio.findOne({ where: { pedidoId: id }, transaction: t });
     }
     if (!domicilio) {
