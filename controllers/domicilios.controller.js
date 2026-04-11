@@ -233,12 +233,6 @@ exports.asignarRepartidor = async (req, res) => {
     if (tarifa !== undefined && tarifa !== null) {
       const tarifaNum = parseFloat(tarifa);
       if (!isNaN(tarifaNum)) {
-        const diferencia = tarifaNum - (domicilio.tarifaAplicada || 0);
-        if (diferencia !== 0) {
-          await Pedido.update({
-            total: sequelize.literal(`total + ${diferencia}`)
-          }, { where: { id: domicilio.pedidoId }, transaction: t });
-        }
         await Domicilio.update({
           costo: tarifaNum,
           tarifaAplicada: tarifaNum
@@ -258,7 +252,7 @@ exports.asignarRepartidor = async (req, res) => {
     await t.commit();
 
     const domicilioActualizado = await Domicilio.findByPk(domicilio.id, {
-      include: [{ model: Pedido }]
+      include: [{ model: Pedido, as: 'pedido' }]
     });
     return successResponse(res, domicilioActualizado, 'Repartidor asignado/actualizado');
   } catch (error) {
