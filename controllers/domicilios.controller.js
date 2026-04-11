@@ -91,7 +91,7 @@ exports.crear = async (req, res) => {
     await t.commit();
     
     const domicilioPopulado = await Domicilio.findByPk(nuevoDomicilio.id, {
-      include: [{ model: Pedido }]
+      include: [{ model: Pedido, as: 'pedido' }]
     });
     
     return successResponse(res, domicilioPopulado, 'Domicilio creado', 201);
@@ -104,7 +104,7 @@ exports.crear = async (req, res) => {
 exports.verDetalle = async (req, res) => {
   try {
     const domicilio = await Domicilio.findByPk(req.params.id, {
-      include: [{ model: Pedido }]
+      include: [{ model: Pedido, as: 'pedido' }]
     });
     if (!domicilio) return errorResponse(res, 'Domicilio no encontrado', 404);
     return successResponse(res, domicilio);
@@ -118,7 +118,7 @@ exports.cambiarEstado = async (req, res) => {
   try {
     const { estado, tarifa_aplicada } = req.body;
     const domicilio = await Domicilio.findByPk(req.params.id, { 
-      include: [{ model: Pedido }],
+      include: [{ model: Pedido, as: 'pedido' }],
       transaction: t 
     });
     if (!domicilio) {
@@ -279,7 +279,7 @@ exports.porCliente = async (req, res) => {
     
     const domicilios = await Domicilio.findAll({ 
       where: { pedidoId: pedidosIds },
-      include: [{ model: Pedido }]
+      include: [{ model: Pedido, as: 'pedido' }]
     });
     
     return successResponse(res, domicilios);
@@ -334,11 +334,10 @@ exports.misPedidosDomicilio = async (req, res) => {
 };
 
 exports.actualizar = async (req, res) => {
-  const t = await sequelize.transaction();
   try {
     const body = req.body || {};
     const domicilio = await Domicilio.findByPk(req.params.id, { 
-      include: [{ model: Pedido }],
+      include: [{ model: Pedido, as: 'pedido' }],
       transaction: t 
     });
     if (!domicilio) {
@@ -388,7 +387,7 @@ exports.actualizar = async (req, res) => {
     await t.commit();
     
     const domicilioActualizado = await Domicilio.findByPk(req.params.id, {
-      include: [{ model: Pedido }]
+      include: [{ model: Pedido, as: 'pedido' }]
     });
     return successResponse(res, domicilioActualizado, 'Domicilio actualizado');
   } catch (error) {
