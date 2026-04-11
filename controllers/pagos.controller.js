@@ -141,7 +141,7 @@ exports.actualizar = async (req, res) => {
     await t.commit();
 
     const actualizado = await Pago.findByPk(id, {
-      include: [{ model: Pedido }]
+      include: [{ model: Pedido, as: 'pedido' }]
     });
 
     return successResponse(res, actualizado, 'Pago actualizado');
@@ -194,7 +194,7 @@ exports.misPagos = async (req, res) => {
 
     const pagos = await Pago.findAll({
       where: { pedidoId: pedidosIds },
-      include: [{ model: Pedido }],
+      include: [{ model: Pedido, as: 'pedido' }],
       order: [['createdAt', 'DESC']]
     });
 

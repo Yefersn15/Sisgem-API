@@ -11,7 +11,7 @@ exports.listar = async (req, res) => {
     const domicilios = await Domicilio.findAll({
       where,
       include: [
-        { model: Pedido, as: 'pedido', attributes: ['id', 'total', 'estadoPedido'] }
+        { model: Pedido, as: 'pedido', attributes: ['id', 'total', 'estadoPedido', 'direccion', 'metodoPago', 'telefono_contacto'] }
       ],
       order: [['createdAt', 'DESC']]
     });
