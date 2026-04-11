@@ -44,6 +44,17 @@ exports.crear = async (req, res) => {
   try {
     const { pedidoId, monto, metodo, estado, referencia, notas, tipo } = req.body;
 
+    const pedido = await Pedido.findByPk(pedidoId);
+    if (!pedido) {
+      await t.rollback();
+      return errorResponse(res, 'Pedido no encontrado', 404);
+    }
+
+    if (pedido.metodoPago === 'Abono' && pedido.estadoPedido !== 'aprobado') {
+      await t.rollback();
+      return errorResponse(res, 'No se puede registrar pago. El Abono debe ser aprobado primero.', 400);
+    }
+
     const nuevoPago = await Pago.create({
       pedidoId,
       monto,
