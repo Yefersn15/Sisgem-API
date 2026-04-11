@@ -189,6 +189,10 @@ exports.aprobarSolicitudAbono = async (req, res) => {
       await t.rollback();
       return errorResponse(res, 'No es un pedido por abono', 400);
     }
+    if (pedido.metodoPago !== 'Abono') {
+      await t.rollback();
+      return errorResponse(res, 'Solo se pueden aprobar pedidos por abono', 400);
+    }
     if (pedido.estadoPedido !== 'Pendiente') {
       await t.rollback();
       return errorResponse(res, 'El pedido ya fue procesado', 400);
@@ -234,6 +238,14 @@ exports.convertirAVenta = async (req, res) => {
     if (pedido.esVenta) {
       await t.rollback();
       return errorResponse(res, 'Ya es una venta', 400);
+    }
+    if (pedido.metodoPago !== 'Abono') {
+      await t.rollback();
+      return errorResponse(res, 'Solo se pueden convertir pedidos por abono', 400);
+    }
+    if (pedido.estadoPedido !== 'Pendiente') {
+      await t.rollback();
+      return errorResponse(res, 'El pedido ya fue procesado', 400);
     }
 
     const productos = pedido.productos || [];
@@ -351,6 +363,28 @@ exports.aprobarPedido = async (req, res) => {
     return successResponse(res, pedido, 'Pedido aprobado');
   } catch (error) {
     await t.rollback();
+    return errorResponse(res, error.message);
+  }
+};
+
+exports.rechazarAbono = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { motivo } = req.body;
+
+    const pedido = await Pedido.findByPk(id);
+    if (!pedido) return errorResponse(res, 'Pedido no encontrado', 404);
+    if (pedido.esVenta) return errorResponse(res, 'No es un pedido por abono', 400);
+    if (pedido.estadoPedido !== 'Pendiente') return errorResponse(res, 'El pedido ya fue procesado', 400);
+    if (pedido.metodoPago !== 'Abono') return errorResponse(res, 'No es un pedido por abono', 400);
+
+    await pedido.update({ 
+      estadoPedido: 'rechazado',
+      observaciones: motivo ? `${pedido.observaciones || ''}\n[RECHAZADO]: ${motivo}`.trim() : pedido.observaciones
+    });
+
+    return successResponse(res, pedido, 'Abono rechazado');
+  } catch (error) {
     return errorResponse(res, error.message);
   }
 };
