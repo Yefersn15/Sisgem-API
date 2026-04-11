@@ -49,10 +49,13 @@ exports.crear = async (req, res) => {
       await t.rollback();
       return errorResponse(res, 'Pedido no encontrado', 404);
     }
+    console.log('[pagos.crear] pedido:', pedido.id, 'tipoVenta:', pedido.tipoVenta, 'estadoPedido:', pedido.estadoPedido, 'metodoPago:', pedido.metodoPago);
 
-    if (pedido.tipoVenta === 'domicilio' && !['aprobado', 'en_preparacion', 'asignado', 'en_camino', 'entregado'].includes(pedido.estadoPedido)) {
+    const validDeliveryStates = ['pendiente', 'aprobado', 'en_preparacion', 'asignado', 'en_camino', 'entregado'];
+    const currentState = String(pedido.estadoPedido || '').toLowerCase();
+    if (pedido.tipoVenta === 'domicilio' && !validDeliveryStates.includes(currentState)) {
       await t.rollback();
-      return errorResponse(res, `No se puede registrar pago. El pedido de domicilio debe tener un repartidor asignado (actual: ${pedido.estadoPedido}).`, 400);
+      return errorResponse(res, `No se puede registrar pago. El pedido de domicilio debe tener un repartidor asignado (actual: ${currentState}).`, 400);
     }
 
     const nuevoPago = await Pago.create({
