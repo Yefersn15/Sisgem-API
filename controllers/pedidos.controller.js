@@ -52,6 +52,8 @@ exports.crear = async (req, res) => {
     if (metodoPago !== 'Abono' && tipoVenta === 'mostrador') {
       estadoPedido = 'aprobado';
       esVenta = true;
+    } else if (metodoPago !== 'Abono' && tipoVenta === 'domicilio') {
+      estadoPedido = 'aprobado';
     }
 
     const nuevoPedido = await Pedido.create({
@@ -73,6 +75,21 @@ telefonoContacto: telefono,
         telefono: direccion.telefono
       } : null
     }, { transaction: t });
+
+    if (tipoVenta === 'domicilio' && metodoPago !== 'Abono') {
+      await Domicilio.create({
+        pedidoId: nuevoPedido.id,
+        direccion: direccion?.direccion || '',
+        direccion2: direccion?.direccion2 || '',
+        barrio: direccion?.barrio || '',
+        ciudad: '',
+        telefono: telefono,
+        estado: 'Pendiente',
+        costo: 0,
+        tarifa_aplicada: 0,
+        datos_front: direccion
+      }, { transaction: t });
+    }
 
     await t.commit();
 
