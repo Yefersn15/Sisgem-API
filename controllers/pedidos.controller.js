@@ -215,12 +215,11 @@ exports.aprobarAbono = async (req, res) => {
     const pedido = await Pedido.findByPk(id);
     if (!pedido) return errorResponse(res, 'Pedido no encontrado', 404);
     if (pedido.esVenta) return errorResponse(res, 'Ya es una venta', 400);
-    if (pedido.metodoPago !== 'Abono') return errorResponse(res, 'Solo se pueden aprobar pedidos por abono', 400);
     if (pedido.estadoPedido !== 'Pendiente') return errorResponse(res, 'El pedido ya fue procesado', 400);
 
     await pedido.update({ estadoPedido: 'aprobado' });
 
-    return successResponse(res, pedido, 'Abono aprovado - espera pago del cliente');
+    return successResponse(res, pedido, 'Pedido aprobado - flujo de domicilio');
   } catch (error) {
     return errorResponse(res, error.message);
   }
