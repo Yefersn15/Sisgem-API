@@ -226,21 +226,25 @@ exports.asignarRepartidor = async (req, res) => {
       }
     }
 
-    await Domicilio.update({
+    console.log('[asignarRepartidor] Checking tarifa:', tarifa, 'type:', typeof tarifa);
+    let updateData = {
       repartidor: repartidorObj,
       repartidorId: repartidorId || null,
       fechaAsignacion: new Date()
-    }, { where: { id: domicilio.id }, transaction: t });
-
+    };
     if (tarifa !== undefined && tarifa !== null) {
-      const tarifaNum = parseFloat(tarifa);
+      const parsed = String(tarifa).replace(/[^0-9.-]/g, '');
+      const tarifaNum = parseFloat(parsed);
+      console.log('[asignarRepartidor] Parsed tarifaNum:', tarifaNum, 'isNaN:', isNaN(tarifaNum));
       if (!isNaN(tarifaNum)) {
-        await Domicilio.update({
-          costo: tarifaNum,
-          tarifaAplicada: tarifaNum
-        }, { where: { id: domicilio.id }, transaction: t });
+        updateData.costo = tarifaNum;
+        updateData.tarifaAplicada = tarifaNum;
+        console.log('[asignarRepartidor] Added to update:', { costo: tarifaNum, tarifaAplicada: tarifaNum });
       }
     }
+    console.log('[asignarRepartidor] Full updateData:', JSON.stringify(updateData));
+    await Domicilio.update(updateData, { where: { id: domicilio.id }, transaction: t });
+    console.log('[asignarRepartidor] Updated domicilio', domicilio.id);
 
     if (['Pendiente', 'aprobado'].includes(domicilio.estado)) {
       await Domicilio.update({ estado: 'asignado' }, { where: { id: domicilio.id }, transaction: t });
@@ -256,6 +260,7 @@ exports.asignarRepartidor = async (req, res) => {
     const domicilioActualizado = await Domicilio.findByPk(domicilio.id, {
       include: [{ model: Pedido, as: 'pedido' }]
     });
+    console.log('[asignarRepartidor] Response:', JSON.stringify({ id: domicilioActualizado.id, tarifaAplicada: domicilioActualizado.tarifaAplicada, costo: domicilioActualizado.costo }));
     return successResponse(res, domicilioActualizado, 'Repartidor asignado/actualizado');
   } catch (error) {
     await t.rollback();
