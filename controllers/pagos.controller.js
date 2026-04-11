@@ -50,9 +50,9 @@ exports.crear = async (req, res) => {
       return errorResponse(res, 'Pedido no encontrado', 404);
     }
 
-    if (pedido.metodoPago === 'Abono' && pedido.estadoPedido !== 'aprobado') {
+    if (pedido.metodoPago === 'Abono' && pedido.estadoPedido !== 'entregado') {
       await t.rollback();
-      return errorResponse(res, 'No se puede registrar pago. El Abono debe ser aprobado primero.', 400);
+      return errorResponse(res, 'No se puede registrar pago. El pedido debe estar entregado primero.', 400);
     }
 
     const nuevoPago = await Pago.create({

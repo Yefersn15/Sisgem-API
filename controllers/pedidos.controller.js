@@ -45,8 +45,13 @@ exports.crear = async (req, res) => {
       }
     }
 
-    const estadoPedido = metodoPago === 'Abono' ? 'Pendiente' : (tipoVenta === 'domicilio' ? 'Pendiente' : 'aprobado');
-    const esVenta = metodoPago !== 'Abono' && tipoVenta === 'mostrador';
+    let estadoPedido = 'Pendiente';
+    let esVenta = false;
+    
+    if (metodoPago !== 'Abono' && tipoVenta === 'mostrador') {
+      estadoPedido = 'aprobado';
+      esVenta = true;
+    }
 
     const nuevoPedido = await Pedido.create({
       usuarioId: req.user.documento,
