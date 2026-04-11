@@ -30,7 +30,7 @@ exports.listar = async (req, res) => {
 
     const pagos = await Pago.findAll({
       where,
-      include: [{ model: Pedido, include: [{ model: Usuario, attributes: ['nombre'] }] }],
+      include: [{ model: Pedido, as: 'pedido', include: [{ model: Usuario, as: 'usuario', attributes: ['nombre'] }] }],
       order: [['createdAt', 'DESC']]
     });
     return successResponse(res, pagos);
