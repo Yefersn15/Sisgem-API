@@ -1,4 +1,4 @@
-const { Domicilio, Pedido, Usuario, sequelize } = require('../models');
+const { Domicilio, Pedido, Pago, Usuario, sequelize } = require('../models');
 const { successResponse, errorResponse } = require('../utils/helpers');
 
 exports.listar = async (req, res) => {
@@ -148,6 +148,35 @@ exports.cambiarEstado = async (req, res) => {
           estadoVenta: 'completada',
           estadoPedido: 'entregado'
         }, { where: { id: domicilio.pedidoId }, transaction: t });
+      } else if (domicilio.Pedido && domicilio.Pedido.metodoPago === 'Abono') {
+        const pedido = await Pedido.findByPk(domicilio.pedidoId, { transaction: t });
+        if (pedido && !pedido.esVenta) {
+          const saldoPendiente = parseFloat(pedido.total) - (parseFloat(pedido.totalPagado) || 0);
+          if (saldoPendiente > 0) {
+            await Pago.create({
+              pedidoId: pedido.id,
+              monto: saldoPendiente,
+              metodo: 'Contraentrega',
+              estado: 'aplicado',
+              referencia: 'Pago automático al entregar domicilio',
+              tipo: 'pago_total'
+            }, { transaction: t });
+            await pedido.update({
+              totalPagado: pedido.total,
+              esVenta: true,
+              estadoVenta: 'completada',
+              estadoPedido: 'entregado'
+            }, { transaction: t });
+          } else {
+            await pedido.update({
+              esVenta: true,
+              estadoVenta: 'completada',
+              estadoPedido: 'entregado'
+            }, { transaction: t });
+          }
+        } else {
+          await pedido.update({ estadoPedido: 'entregado' }, { transaction: t });
+        }
       }
     }
     if (tarifa_aplicada !== undefined) {
@@ -169,6 +198,20 @@ exports.cambiarEstado = async (req, res) => {
       if (estado === 'entregado') nuevoEstadoPedido = 'entregado';
       if (estado === 'cancelado') nuevoEstadoPedido = 'cancelado';
       await Pedido.update({ estadoPedido: nuevoEstadoPedido }, { where: { id: domicilio.pedidoId }, transaction: t });
+      
+      // Crear registro de pago automáticamente cuando se entrega un domicilio con Abono
+      if (estado === 'entregado' && domicilio.Pedido.metodoPago === 'Abono') {
+        const existingPagos = await Pago.findAll({ where: { pedidoId: domicilio.pedidoId }, transaction: t });
+        if (existingPagos.length === 0) {
+          await Pago.create({
+            pedidoId: domicilio.pedidoId,
+            monto: domicilio.Pedido.total,
+            metodo: 'Abono',
+            estado: 'Pendiente',
+            tipo: 'pago_total'
+          }, { transaction: t });
+        }
+      }
     }
 
     await t.commit();
