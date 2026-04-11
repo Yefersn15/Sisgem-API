@@ -34,7 +34,7 @@ exports.crear = async (req, res) => {
         subtotal: itemSubtotal
       });
 
-      const esVentaInmediata = metodoPago !== 'Abono' && tipoVenta !== 'domicilio';
+      const esVentaInmediata = metodoPago !== 'Abono' && tipoVenta === 'mostrador';
       if (esVentaInmediata) {
         const nuevoStock = producto.stock - item.cantidad;
         if (nuevoStock < 0) {
@@ -46,7 +46,7 @@ exports.crear = async (req, res) => {
     }
 
     const estadoPedido = metodoPago === 'Abono' ? 'Pendiente' : (tipoVenta === 'domicilio' ? 'Pendiente' : 'aprobado');
-    const esVenta = metodoPago !== 'Abono' && tipoVenta !== 'domicilio';
+    const esVenta = metodoPago !== 'Abono' && tipoVenta === 'mostrador';
 
     const nuevoPedido = await Pedido.create({
       usuarioId: req.user.documento,
@@ -82,30 +82,58 @@ exports.crear = async (req, res) => {
 };
 
 exports.cambiarEstadoPedido = async (req, res) => {
+  const t = await sequelize.transaction();
   try {
     const { id } = req.params;
     const { estado_pedido } = req.body;
 
-    const pedido = await Pedido.findByPk(id);
-    if (!pedido) return errorResponse(res, 'Pedido no encontrado', 404);
-    if (pedido.esVenta) return errorResponse(res, 'No se puede modificar estado de una venta', 400);
+    const pedido = await Pedido.findByPk(id, { transaction: t });
+    if (!pedido) {
+      await t.rollback();
+      return errorResponse(res, 'Pedido no encontrado', 404);
+    }
+    if (pedido.esVenta) {
+      await t.rollback();
+      return errorResponse(res, 'No se puede modificar estado de una venta', 400);
+    }
 
     const transiciones = {
       'Pendiente': ['aprobado', 'cancelado'],
-      'aprobado': ['asignado', 'cancelado'],
+      'aprobado': ['en_preparacion', 'cancelado'],
+      'en_preparacion': ['asignado', 'cancelado'],
       'asignado': ['en_camino', 'cancelado'],
       'en_camino': ['entregado'],
-      'entregado': [],
+      'entregado': ['recibido'],
+      'recibido': [],
       'cancelado': []
     };
     if (!transiciones[pedido.estadoPedido]?.includes(estado_pedido)) {
+      await t.rollback();
       return errorResponse(res, `No se puede pasar de ${pedido.estadoPedido} a ${estado_pedido}`, 400);
     }
 
-    await pedido.update({ estadoPedido: estado_pedido });
+    await pedido.update({ estadoPedido: estado_pedido }, { transaction: t });
 
+    if (estado_pedido === 'entregado' && !pedido.esVenta) {
+      const productos = pedido.productos || [];
+      for (const item of productos) {
+        const producto = await Producto.findByPk(item.producto, { transaction: t });
+        if (producto) {
+          const nuevoStock = producto.stock - item.cantidad;
+          if (nuevoStock < 0) {
+            await t.rollback();
+            return errorResponse(res, `Stock insuficiente para producto ${producto.nombre}`, 400);
+          }
+          await producto.update({ stock: nuevoStock }, { transaction: t });
+        }
+      }
+      await pedido.update({ esVenta: true, estadoVenta: 'completada' }, { transaction: t });
+    }
+
+    await t.commit();
     return successResponse(res, pedido, 'Estado actualizado');
   } catch (error) {
+    await t.rollback();
     return errorResponse(res, error.message);
   }
 };
