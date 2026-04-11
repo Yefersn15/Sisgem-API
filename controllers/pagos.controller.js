@@ -50,9 +50,9 @@ exports.crear = async (req, res) => {
       return errorResponse(res, 'Pedido no encontrado', 404);
     }
 
-    if (pedido.metodoPago === 'Abono' && pedido.estadoPedido !== 'entregado') {
+    if ((pedido.metodoPago === 'Abono' || pedido.tipoVenta === 'domicilio') && pedido.estadoPedido !== 'entregado') {
       await t.rollback();
-      return errorResponse(res, 'No se puede registrar pago. El pedido debe estar entregado primero.', 400);
+      return errorResponse(res, 'No se puede registrar pago. El pedido de domicilio debe estar entregado primero.', 400);
     }
 
     const nuevoPago = await Pago.create({
@@ -79,7 +79,7 @@ exports.crear = async (req, res) => {
     await t.commit();
 
     const pagoPopulado = await Pago.findByPk(nuevoPago.id, {
-      include: [{ model: Pedido }]
+      include: [{ model: Pedido, as: 'pedido' }]
     });
 
     return successResponse(res, pagoPopulado, 'Pago registrado', 201);
@@ -93,7 +93,7 @@ exports.verDetalle = async (req, res) => {
   try {
     const { id } = req.params;
     const pago = await Pago.findByPk(id, {
-      include: [{ model: Pedido }]
+      include: [{ model: Pedido, as: 'pedido' }]
     });
 
     if (!pago) return errorResponse(res, 'Pago no encontrado', 404);
