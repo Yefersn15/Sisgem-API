@@ -8,6 +8,7 @@ exports.crear = async (req, res) => {
     const { tipo_venta, productos, observaciones, metodo_pago, telefonoContacto, direccion } = req.body;
     const metodoPago = metodo_pago;
     const tipoVenta = tipo_venta;
+    const telefono = telefonoContacto || (direccion && direccion.telefono) || null;
     
     if (!productos || !Array.isArray(productos) || productos.length === 0) {
       return errorResponse(res, 'Se requiere al menos un producto', 400);
@@ -64,7 +65,7 @@ exports.crear = async (req, res) => {
       estadoPedido,
       esVenta,
       estadoVenta: esVenta ? 'completada' : null,
-      telefonoContacto,
+telefonoContacto: telefono,
       direccion: direccion ? {
         direccion: direccion.direccion || direccion,
         direccion2: direccion.direccion2 || '',
