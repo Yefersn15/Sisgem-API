@@ -116,7 +116,7 @@ exports.verDetalle = async (req, res) => {
 exports.cambiarEstado = async (req, res) => {
   const t = await sequelize.transaction();
   try {
-    const { estado, tarifa_aplicada } = req.body;
+    const { estado, tarifa_aplicada, forzar } = req.body;
     const domicilio = await Domicilio.findByPk(req.params.id, { 
       include: [{ model: Pedido, as: 'pedido' }],
       transaction: t 
@@ -124,6 +124,37 @@ exports.cambiarEstado = async (req, res) => {
     if (!domicilio) {
       await t.rollback();
       return errorResponse(res, 'Domicilio no encontrado', 404);
+    }
+
+    const pedido = domicilio.pedido;
+    
+    // Si el domicilio ya está entregado y el pedido no se convirtió, intentar convertir
+    if (domicilio.estado === 'entregado' && pedido && !pedido.esVenta && (forzar === true || estado === 'entregado')) {
+      const saldoPendiente = parseFloat(pedido.total) - (parseFloat(pedido.totalPagado) || 0);
+      if (saldoPendiente > 0) {
+        await Pago.create({
+          pedidoId: pedido.id,
+          monto: saldoPendiente,
+          metodo: 'Contraentrega',
+          estado: 'aplicado',
+          referencia: 'Pago automático al entregar domicilio',
+          tipo: 'pago_total'
+        }, { transaction: t });
+        await pedido.update({
+          totalPagado: pedido.total,
+          esVenta: true,
+          estadoVenta: 'completada',
+          estadoPedido: 'entregado'
+        }, { transaction: t });
+      } else {
+        await pedido.update({
+          esVenta: true,
+          estadoVenta: 'completada',
+          estadoPedido: 'entregado'
+        }, { transaction: t });
+      }
+      await t.commit();
+      return successResponse(res, domicilio, 'Pedido convertido a venta');
     }
 
     const transiciones = {
@@ -190,29 +221,6 @@ exports.cambiarEstado = async (req, res) => {
     }
 
     await Domicilio.update(updateData, { where: { id: req.params.id }, transaction: t });
-
-    if (domicilio.Pedido) {
-      let nuevoEstadoPedido = estado;
-      if (estado === 'asignado') nuevoEstadoPedido = 'asignado';
-      if (estado === 'en_camino') nuevoEstadoPedido = 'en_camino';
-      if (estado === 'entregado') nuevoEstadoPedido = 'entregado';
-      if (estado === 'cancelado') nuevoEstadoPedido = 'cancelado';
-      await Pedido.update({ estadoPedido: nuevoEstadoPedido }, { where: { id: domicilio.pedidoId }, transaction: t });
-      
-      // Crear registro de pago automáticamente cuando se entrega un domicilio con Abono
-      if (estado === 'entregado' && domicilio.Pedido.metodoPago === 'Abono') {
-        const existingPagos = await Pago.findAll({ where: { pedidoId: domicilio.pedidoId }, transaction: t });
-        if (existingPagos.length === 0) {
-          await Pago.create({
-            pedidoId: domicilio.pedidoId,
-            monto: domicilio.Pedido.total,
-            metodo: 'Abono',
-            estado: 'Pendiente',
-            tipo: 'pago_total'
-          }, { transaction: t });
-        }
-      }
-    }
 
     await t.commit();
     
