@@ -26,13 +26,14 @@ const app = express();
 
 // Configuración CORS - permitir todo para evitar problemas
 const corsOptions = {
-  origin: true, // Permitir todos los origins en desarrollo
+  origin: '*',
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 };
 
 app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -70,8 +71,8 @@ app.use((req, res) => {
 
 // Middleware de manejo de errores
 app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ message: 'Error interno del servidor' });
+  console.error('❌ Error global:', err.stack);
+  res.status(500).json({ message: 'Error interno del servidor', error: err.message });
 });
 
 module.exports = app;

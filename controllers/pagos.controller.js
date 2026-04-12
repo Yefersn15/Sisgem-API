@@ -3,6 +3,11 @@ const { successResponse, errorResponse } = require('../utils/helpers');
 
 async function actualizarTotalPagado(pedidoId, trans = null) {
   try {
+    if (!sequelize || !Pedido) {
+      console.error('❌ Sequelize o modelo Pedido no disponible');
+      return 0;
+    }
+    
     const pedido = await Pedido.findByPk(pedidoId, { transaction: trans });
     if (!pedido) return 0;
     
