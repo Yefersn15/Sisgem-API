@@ -5,10 +5,14 @@ async function actualizarTotalPagado(pedidoId) {
   const pedido = await Pedido.findByPk(pedidoId);
   if (!pedido) return 0;
   
-  const pagosAplicados = await Pago.findAll({ 
-    where: { pedidoId, estado: 'aplicado' }
+  // Incluir tanto aplicados como pendientes
+  const pagosRelevantes = await Pago.findAll({ 
+    where: {
+      pedidoId,
+      estado: { [require('sequelize').Op.in]: ['aplicado', 'pendiente'] }
+    }
   });
-  const total = pagosAplicados.reduce((sum, p) => sum + parseFloat(p.monto), 0);
+  const total = pagosRelevantes.reduce((sum, p) => sum + parseFloat(p.monto), 0);
   await pedido.update({ totalPagado: total });
   return total;
 }
@@ -73,7 +77,16 @@ exports.crear = async (req, res) => {
       
       const pedido = await Pedido.findByPk(nuevoPago.pedidoId, { transaction: t });
       if (pedido && pedido.metodoPago === 'Abono' && !pedido.esVenta) {
-        if (pedido.totalPagado >= pedido.total) {
+        // Calcular total incluyendo pagos pendientes
+        const pagosRelevantes = await Pago.findAll({ 
+          where: { 
+            pedidoId: pedido.id,
+            estado: { [require('sequelize').Op.in]: ['aplicado', 'pendiente'] }
+          }
+        });
+        const totalPagado = pagosRelevantes.reduce((sum, p) => sum + parseFloat(p.monto), 0);
+        
+        if (totalPagado >= parseFloat(pedido.total)) {
           await pedido.update({ esVenta: true, estadoVenta: 'completada' }, { transaction: t });
         }
       }
@@ -137,7 +150,14 @@ exports.actualizar = async (req, res) => {
       await actualizarTotalPagado(pago.pedidoId, { transaction: t });
       const pedido = await Pedido.findByPk(pago.pedidoId, { transaction: t });
       if (pedido && pedido.metodoPago === 'Abono' && !pedido.esVenta) {
-        if (pedido.totalPagado >= pedido.total) {
+        const pagosRelevantes = await Pago.findAll({ 
+          where: { 
+            pedidoId: pedido.id,
+            estado: { [require('sequelize').Op.in]: ['aplicado', 'pendiente'] }
+          }
+        });
+        const totalPagado = pagosRelevantes.reduce((sum, p) => sum + parseFloat(p.monto), 0);
+        if (totalPagado >= parseFloat(pedido.total)) {
           await pedido.update({ esVenta: true, estadoVenta: 'completada' }, { transaction: t });
         }
       }
@@ -177,7 +197,14 @@ exports.cambiarEstado = async (req, res) => {
       await actualizarTotalPagado(pago.pedidoId, { transaction: t });
       const pedido = await Pedido.findByPk(pago.pedidoId, { transaction: t });
       if (pedido && pedido.metodoPago === 'Abono' && !pedido.esVenta) {
-        if (pedido.totalPagado >= pedido.total) {
+        const pagosRelevantes = await Pago.findAll({ 
+          where: { 
+            pedidoId: pedido.id,
+            estado: { [require('sequelize').Op.in]: ['aplicado', 'pendiente'] }
+          }
+        });
+        const totalPagado = pagosRelevantes.reduce((sum, p) => sum + parseFloat(p.monto), 0);
+        if (totalPagado >= parseFloat(pedido.total)) {
           await pedido.update({ esVenta: true, estadoVenta: 'completada' }, { transaction: t });
         }
       }
