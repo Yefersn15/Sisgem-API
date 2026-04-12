@@ -173,14 +173,25 @@ exports.cambiarEstado = async (req, res) => {
       updateData.fechaAsignacion = new Date();
       const pedido = await Pedido.findByPk(domicilio.pedidoId, { transaction: t });
       
-      if (domicilio.Pedido && domicilio.Pedido.metodoPago !== 'Abono') {
+      if (pedido && pedido.metodoPago !== 'Abono' && !pedido.esVenta) {
+        console.log(`[cambiarEstado] Domicilio entregado - método: ${pedido.metodoPago}, creando pago contraentrega`);
+        await Pago.create({
+          pedidoId: pedido.id,
+          monto: pedido.total,
+          metodo: 'Contraentrega',
+          estado: 'aplicado',
+          referencia: `Pago contraentrega - ${pedido.metodoPago}`,
+          tipo: 'pago_total'
+        }, { transaction: t });
         await Pedido.update({
           esVenta: true,
           estadoVenta: 'completada',
-          estadoPedido: 'entregado'
-        }, { where: { id: domicilio.pedidoId }, transaction: t });
-      } else if (domicilio.Pedido && domicilio.Pedido.metodoPago === 'Abono') {
-        if (pedido && !pedido.esVenta) {
+          estadoPedido: 'entregado',
+          totalPagado: pedido.total
+        }, { where: { id: pedido.id }, transaction: t });
+        console.log(`[cambiarEstado] Pedido ${pedido.id} convertido a venta`);
+      } else if (pedido && pedido.metodoPago === 'Abono') {
+        if (!pedido.esVenta) {
           const saldoPendiente = parseFloat(pedido.total) - (parseFloat(pedido.totalPagado) || 0);
           if (saldoPendiente > 0) {
             await Pago.create({
@@ -213,10 +224,10 @@ exports.cambiarEstado = async (req, res) => {
     }
     if (tarifa_aplicada !== undefined) {
       const diferencia = tarifa_aplicada - (domicilio.tarifaAplicada || 0);
-      if (diferencia !== 0 && domicilio.Pedido) {
+      if (diferencia !== 0 && pedido) {
         await Pedido.update({
           total: sequelize.literal(`total + ${diferencia}`)
-        }, { where: { id: domicilio.pedidoId }, transaction: t });
+        }, { where: { id: pedido.id }, transaction: t });
       }
       updateData.tarifaAplicada = tarifa_aplicada;
     }
