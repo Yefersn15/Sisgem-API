@@ -24,21 +24,12 @@ const carritoRoutes = require('./routes/carrito.routes');
 
 const app = express();
 
-// Configuración CORS
-const corsOrigin = process.env.CORS_ORIGIN || '*';
-const allowedOrigins = corsOrigin.split(',').map(origin => origin.trim());
-
+// Configuración CORS - permitir todo para evitar problemas
 const corsOptions = {
-  origin: function (origin, callback) {
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.includes('*') || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error('No permitido por CORS'));
-    }
-  },
+  origin: true, // Permitir todos los origins en desarrollo
   credentials: true,
-  optionsSuccessStatus: 200
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 };
 
 app.use(cors(corsOptions));
