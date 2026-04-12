@@ -8,6 +8,13 @@ async function actualizarTotalPagado(pedidoId, trans = null) {
       return 0;
     }
     
+    try {
+      await sequelize.query('SELECT 1', { type: sequelize.QueryTypes.SELECT });
+    } catch (connError) {
+      console.error('❌ Conexión a BD no disponible:', connError.message);
+      return 0;
+    }
+    
     const pedido = await Pedido.findByPk(pedidoId, { transaction: trans });
     if (!pedido) return 0;
     
@@ -89,9 +96,9 @@ exports.crear = async (req, res) => {
     }, { transaction: t });
 
     if (nuevoPago.estado === 'aplicado') {
-      await actualizarTotalPagado(nuevoPago.pedidoId, { transaction: t });
+      const totalActualizado = await actualizarTotalPagado(nuevoPago.pedidoId);
       
-      const pedidoActualizado = await Pedido.findByPk(nuevoPago.pedidoId, { transaction: t });
+      const pedidoActualizado = await Pedido.findByPk(nuevoPago.pedidoId);
       if (pedidoActualizado.esVenta) {
         console.log(`Pedido ${pedidoActualizado.id} convertido a venta automáticamente`);
       } else if (pedidoActualizado.metodoPago === 'Abono') {
@@ -100,11 +107,11 @@ exports.crear = async (req, res) => {
             pedidoId: pedidoActualizado.id,
             estado: { [Op.in]: ['aplicado', 'pendiente'] }
           }
-        }, { transaction: t });
+        });
         const totalPagado = pagosRelevantes.reduce((sum, p) => sum + parseFloat(p.monto), 0);
         
         if (totalPagado >= parseFloat(pedidoActualizado.total)) {
-          await pedidoActualizado.update({ esVenta: true, estadoVenta: 'completada' }, { transaction: t });
+          await pedidoActualizado.update({ esVenta: true, estadoVenta: 'completada' });
         }
       }
     }
@@ -164,8 +171,8 @@ exports.actualizar = async (req, res) => {
     }, { transaction: t });
 
     if (oldEstado !== 'aplicado' && estado === 'aplicado') {
-      await actualizarTotalPagado(pago.pedidoId, { transaction: t });
-      const pedidoActualizado = await Pedido.findByPk(pago.pedidoId, { transaction: t });
+      await actualizarTotalPagado(pago.pedidoId);
+      const pedidoActualizado = await Pedido.findByPk(pago.pedidoId);
       if (pedidoActualizado.esVenta) {
         console.log(`Pedido ${pedidoActualizado.id} convertido a venta automáticamente`);
       } else if (pedidoActualizado.metodoPago === 'Abono') {
@@ -174,14 +181,14 @@ exports.actualizar = async (req, res) => {
             pedidoId: pedidoActualizado.id,
             estado: { [Op.in]: ['aplicado', 'pendiente'] }
           }
-        }, { transaction: t });
+        });
         const totalPagado = pagosRelevantes.reduce((sum, p) => sum + parseFloat(p.monto), 0);
         if (totalPagado >= parseFloat(pedidoActualizado.total)) {
-          await pedidoActualizado.update({ esVenta: true, estadoVenta: 'completada' }, { transaction: t });
+          await pedidoActualizado.update({ esVenta: true, estadoVenta: 'completada' });
         }
       }
     } else if (oldEstado === 'aplicado' && estado !== 'aplicado') {
-      await actualizarTotalPagado(pago.pedidoId, { transaction: t });
+      await actualizarTotalPagado(pago.pedidoId);
     }
 
     await t.commit();
@@ -213,8 +220,8 @@ exports.cambiarEstado = async (req, res) => {
     await pago.update({ estado }, { transaction: t });
 
     if (oldEstado !== 'aplicado' && estado === 'aplicado') {
-      await actualizarTotalPagado(pago.pedidoId, { transaction: t });
-      const pedidoActualizado = await Pedido.findByPk(pago.pedidoId, { transaction: t });
+      await actualizarTotalPagado(pago.pedidoId);
+      const pedidoActualizado = await Pedido.findByPk(pago.pedidoId);
       if (pedidoActualizado.esVenta) {
         console.log(`Pedido ${pedidoActualizado.id} convertido a venta automáticamente`);
       } else if (pedidoActualizado.metodoPago === 'Abono') {
@@ -223,14 +230,14 @@ exports.cambiarEstado = async (req, res) => {
             pedidoId: pedidoActualizado.id,
             estado: { [Op.in]: ['aplicado', 'pendiente'] }
           }
-        }, { transaction: t });
+        });
         const totalPagado = pagosRelevantes.reduce((sum, p) => sum + parseFloat(p.monto), 0);
         if (totalPagado >= parseFloat(pedidoActualizado.total)) {
-          await pedidoActualizado.update({ esVenta: true, estadoVenta: 'completada' }, { transaction: t });
+          await pedidoActualizado.update({ esVenta: true, estadoVenta: 'completada' });
         }
       }
     } else if (oldEstado === 'aplicado' && estado !== 'aplicado') {
-      await actualizarTotalPagado(pago.pedidoId, { transaction: t });
+      await actualizarTotalPagado(pago.pedidoId);
     }
 
     await t.commit();
