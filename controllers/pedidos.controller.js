@@ -28,11 +28,19 @@ exports.crear = async (req, res) => {
       const itemSubtotal = item.cantidad * item.precio_unitario;
       subtotal += itemSubtotal;
 
+      const snapshot = {
+        id: producto.id,
+        nombre: producto.nombre,
+        precio: producto.precio,
+        imagen: producto.imagen
+      };
+
       productosPedido.push({
         producto: item.producto,
         cantidad: item.cantidad,
         precio_unitario: item.precio_unitario,
-        subtotal: itemSubtotal
+        subtotal: itemSubtotal,
+        productoSnapshot: snapshot
       });
 
       const esVentaInmediata = metodoPago !== 'Abono' && tipoVenta === 'mostrador';

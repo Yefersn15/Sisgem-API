@@ -14,6 +14,14 @@ async function actualizarTotalPagado(pedidoId) {
   });
   const total = pagosRelevantes.reduce((sum, p) => sum + parseFloat(p.monto), 0);
   await pedido.update({ totalPagado: total });
+  
+  // Convertir a venta automáticamente si el total pagado alcanza el total del pedido
+  // Esto aplica tanto para pagos aplicados como pendientes
+  if (pedido.metodoPago === 'Abono' && !pedido.esVenta && total >= parseFloat(pedido.total)) {
+    await pedido.update({ esVenta: true, estadoVenta: 'completada' });
+    console.log(`[actualizarTotalPagado] Pedido ${pedidoId} convertido a venta automáticamente`);
+  }
+  
   return total;
 }
 
