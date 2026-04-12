@@ -1,26 +1,31 @@
 const { Pago, Pedido, Producto, Usuario, sequelize, Op } = require('../models');
 const { successResponse, errorResponse } = require('../utils/helpers');
 
-async function actualizarTotalPagado(pedidoId, transaction = null) {
-  const pedido = await Pedido.findByPk(pedidoId, { transaction });
-  if (!pedido) return 0;
-  
-  const pagosRelevantes = await Pago.findAll({ 
-    where: {
-      pedidoId,
-      estado: { [Op.in]: ['aplicado', 'pendiente'] }
-    },
-    transaction
-  });
-  const total = pagosRelevantes.reduce((sum, p) => sum + parseFloat(p.monto), 0);
-  await pedido.update({ totalPagado: total }, { transaction });
-  
-  if (pedido.estadoPedido === 'entregado' && total >= parseFloat(pedido.total) && !pedido.esVenta) {
-    await pedido.update({ esVenta: true, estadoVenta: 'completada' }, { transaction });
-    console.log(`✅ Pedido ${pedidoId} convertido a venta (pagado + entregado)`);
+async function actualizarTotalPagado(pedidoId, trans = null) {
+  try {
+    const pedido = await Pedido.findByPk(pedidoId, { transaction: trans });
+    if (!pedido) return 0;
+    
+    const pagosRelevantes = await Pago.findAll({ 
+      where: {
+        pedidoId,
+        estado: { [Op.in]: ['aplicado', 'pendiente'] }
+      },
+      transaction: trans
+    });
+    const total = pagosRelevantes.reduce((sum, p) => sum + parseFloat(p.monto), 0);
+    await pedido.update({ totalPagado: total }, { transaction: trans });
+    
+    if (pedido.estadoPedido === 'entregado' && total >= parseFloat(pedido.total) && !pedido.esVenta) {
+      await pedido.update({ esVenta: true, estadoVenta: 'completada' }, { transaction: trans });
+      console.log(`✅ Pedido ${pedidoId} convertido a venta (pagado + entregado)`);
+    }
+    
+    return total;
+  } catch (error) {
+    console.error('Error en actualizarTotalPagado:', error.message);
+    return 0;
   }
-  
-  return total;
 }
 
 exports.listar = async (req, res) => {
