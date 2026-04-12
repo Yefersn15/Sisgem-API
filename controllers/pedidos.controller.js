@@ -170,7 +170,7 @@ exports.listarPedidos = async (req, res) => {
 
     const pedidos = await Pedido.findAll({
       where,
-      include: [{ model: Usuario, as: 'usuario', attributes: ['documento', 'nombre', 'email', 'telefono'] }],
+      include: [{ model: Usuario, as: 'usuario', attributes: ['documento', 'nombre', 'apellido', 'email', 'telefono'] }],
       order: [['createdAt', 'DESC']]
     });
 
@@ -184,7 +184,7 @@ exports.listarVentas = async (req, res) => {
   try {
     const pedidos = await Pedido.findAll({
       where: { esVenta: true },
-      include: [{ model: Usuario, as: 'usuario', attributes: ['documento', 'nombre', 'email', 'telefono'] }],
+      include: [{ model: Usuario, as: 'usuario', attributes: ['documento', 'nombre', 'apellido', 'email', 'telefono'] }],
       order: [['createdAt', 'DESC']]
     });
 
@@ -211,7 +211,7 @@ exports.verDetalle = async (req, res) => {
   try {
     const { id } = req.params;
     const pedido = await Pedido.findByPk(id, {
-      include: [{ model: Usuario, as: 'usuario', attributes: ['documento', 'nombre', 'email', 'telefono'] }]
+      include: [{ model: Usuario, as: 'usuario', attributes: ['documento', 'nombre', 'apellido', 'email', 'telefono'] }]
     });
 
     if (!pedido) return errorResponse(res, 'Pedido no encontrado', 404);

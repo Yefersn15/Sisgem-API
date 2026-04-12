@@ -30,7 +30,7 @@ exports.listar = async (req, res) => {
 
     const pagos = await Pago.findAll({
       where,
-      include: [{ model: Pedido, as: 'pedido', include: [{ model: Usuario, as: 'usuario', attributes: ['nombre'] }] }],
+      include: [{ model: Pedido, as: 'pedido', include: [{ model: Usuario, as: 'usuario', attributes: ['documento', 'nombre', 'apellido'] }] }],
       order: [['createdAt', 'DESC']]
     });
     return successResponse(res, pagos);
@@ -96,7 +96,11 @@ exports.verDetalle = async (req, res) => {
   try {
     const { id } = req.params;
     const pago = await Pago.findByPk(id, {
-      include: [{ model: Pedido, as: 'pedido' }]
+      include: [{ 
+        model: Pedido, 
+        as: 'pedido',
+        include: [{ model: Usuario, as: 'usuario', attributes: ['documento', 'nombre', 'apellido', 'email', 'telefono'] }]
+      }]
     });
 
     if (!pago) return errorResponse(res, 'Pago no encontrado', 404);
