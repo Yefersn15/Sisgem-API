@@ -109,11 +109,12 @@ exports.crear = async (req, res) => {
         });
         const totalPagado = pagosRelevantes.reduce((sum, p) => sum + parseFloat(p.monto), 0);
         
-        console.log(`[convertir] totalPagado: ${totalPagado}, total pedido: ${pedidoActualizado.total}, esVenta: ${pedidoActualizado.esVenta}`);
+        const estadoValido = ['entregado', 'recibido'].includes(String(pedidoActualizado.estadoPedido).toLowerCase());
+        console.log(`[convertir] totalPagado: ${totalPagado}, total: ${pedidoActualizado.total}, estado: ${pedidoActualizado.estadoPedido}, esVenta: ${pedidoActualizado.esVenta}`);
         
-        if (totalPagado >= parseFloat(pedidoActualizado.total)) {
+        if (estadoValido && totalPagado >= parseFloat(pedidoActualizado.total)) {
           await pedidoActualizado.update({ esVenta: true, estadoVenta: 'completada' });
-          console.log(`✅ Pedido ${pedidoActualizado.id} convertido a venta (pago completo)`);
+          console.log(`✅ Pedido ${pedidoActualizado.id} convertido a venta (entregado + pago completo)`);
         }
       }
     }
@@ -172,7 +173,7 @@ exports.actualizar = async (req, res) => {
       tipo: tipo !== undefined ? tipo : pago.tipo
 }, { transaction: t });
 
-    if (oldEstado !== 'aplicado' && estado === 'aplicado') {
+if (oldEstado !== 'aplicado' && estado === 'aplicado') {
       await actualizarTotalPagado(pago.pedidoId);
       const pedidoActualizado = await Pedido.findByPk(pago.pedidoId);
       if (!pedidoActualizado.esVenta && pedidoActualizado.metodoPago === 'Abono') {
@@ -183,8 +184,9 @@ exports.actualizar = async (req, res) => {
           }
         });
         const totalPagado = pagosRelevantes.reduce((sum, p) => sum + parseFloat(p.monto), 0);
-        console.log(`[convertir] totalPagado: ${totalPagado}, total pedido: ${pedidoActualizado.total}`);
-        if (totalPagado >= parseFloat(pedidoActualizado.total)) {
+        const estadoValido = ['entregado', 'recibido'].includes(String(pedidoActualizado.estadoPedido).toLowerCase());
+        console.log(`[convertir] totalPagado: ${totalPagado}, total: ${pedidoActualizado.total}, estado: ${pedidoActualizado.estadoPedido}`);
+        if (estadoValido && totalPagado >= parseFloat(pedidoActualizado.total)) {
           await pedidoActualizado.update({ esVenta: true, estadoVenta: 'completada' });
           console.log(`✅ Pedido ${pedidoActualizado.id} convertido a venta`);
         }
@@ -232,8 +234,9 @@ exports.cambiarEstado = async (req, res) => {
           }
         });
         const totalPagado = pagosRelevantes.reduce((sum, p) => sum + parseFloat(p.monto), 0);
-        console.log(`[convertir] totalPagado: ${totalPagado}, total pedido: ${pedidoActualizado.total}`);
-        if (totalPagado >= parseFloat(pedidoActualizado.total)) {
+        const estadoValido = ['entregado', 'recibido'].includes(String(pedidoActualizado.estadoPedido).toLowerCase());
+        console.log(`[convertir] totalPagado: ${totalPagado}, total: ${pedidoActualizado.total}, estado: ${pedidoActualizado.estadoPedido}`);
+        if (estadoValido && totalPagado >= parseFloat(pedidoActualizado.total)) {
           await pedidoActualizado.update({ esVenta: true, estadoVenta: 'completada' });
           console.log(`✅ Pedido ${pedidoActualizado.id} convertido a venta`);
         }
