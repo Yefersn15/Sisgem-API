@@ -99,7 +99,12 @@ exports.crear = async (req, res) => {
 
     if (nuevoPago.estado === 'aplicado') {
       const totalActualizado = await actualizarTotalPagado(nuevoPago.pedidoId);
-      
+    }
+
+    await t.commit();
+
+    // Conversión DESPUÉS del commit para ver todos los pagos
+    if (nuevoPago.estado === 'aplicado') {
       const pedidoActualizado = await Pedido.findByPk(nuevoPago.pedidoId);
       if (!pedidoActualizado.esVenta && pedidoActualizado.metodoPago === 'Abono') {
         const pagosRelevantes = await Pago.findAll({ 
@@ -109,18 +114,14 @@ exports.crear = async (req, res) => {
           }
         });
         const totalPagado = pagosRelevantes.reduce((sum, p) => sum + parseFloat(p.monto), 0);
-        
         const estadoValido = ['entregado', 'recibido'].includes(String(pedidoActualizado.estadoPedido).toLowerCase());
-        console.log(`[convertir] totalPagado: ${totalPagado}, total: ${pedidoActualizado.total}, estado: ${pedidoActualizado.estadoPedido}, esVenta: ${pedidoActualizado.esVenta}`);
-        
+        console.log(`[convertir] totalPagado: ${totalPagado}, total: ${pedidoActualizado.total}, estado: ${pedidoActualizado.estadoPedido}`);
         if (estadoValido && totalPagado >= parseFloat(pedidoActualizado.total)) {
           await pedidoActualizado.update({ esVenta: true, estadoVenta: 'completada' });
-          console.log(`✅ Pedido ${pedidoActualizado.id} convertido a venta (entregado + pago completo)`);
+          console.log(`✅ Pedido ${pedidoActualizado.id} convertido a venta`);
         }
       }
     }
-
-    await t.commit();
 
     const pagoPopulado = await Pago.findByPk(nuevoPago.id, {
       include: [{ model: Pedido, as: 'pedido' }]
@@ -176,6 +177,14 @@ exports.actualizar = async (req, res) => {
 
 if (oldEstado !== 'aplicado' && estado === 'aplicado') {
       await actualizarTotalPagado(pago.pedidoId);
+    } else if (oldEstado === 'aplicado' && estado !== 'aplicado') {
+      await actualizarTotalPagado(pago.pedidoId);
+    }
+
+    await t.commit();
+
+    // Conversión DESPUÉS del commit
+    if (oldEstado !== 'aplicado' && estado === 'aplicado') {
       const pedidoActualizado = await Pedido.findByPk(pago.pedidoId);
       if (!pedidoActualizado.esVenta && pedidoActualizado.metodoPago === 'Abono') {
         const pagosRelevantes = await Pago.findAll({ 
@@ -192,11 +201,7 @@ if (oldEstado !== 'aplicado' && estado === 'aplicado') {
           console.log(`✅ Pedido ${pedidoActualizado.id} convertido a venta`);
         }
       }
-    } else if (oldEstado === 'aplicado' && estado !== 'aplicado') {
-      await actualizarTotalPagado(pago.pedidoId);
     }
-
-    await t.commit();
 
     const actualizado = await Pago.findByPk(id, {
       include: [{ model: Pedido, as: 'pedido' }]
@@ -226,6 +231,14 @@ exports.cambiarEstado = async (req, res) => {
 
     if (oldEstado !== 'aplicado' && estado === 'aplicado') {
       await actualizarTotalPagado(pago.pedidoId);
+    } else if (oldEstado === 'aplicado' && estado !== 'aplicado') {
+      await actualizarTotalPagado(pago.pedidoId);
+    }
+
+    await t.commit();
+
+    // Conversión DESPUÉS del commit
+    if (oldEstado !== 'aplicado' && estado === 'aplicado') {
       const pedidoActualizado = await Pedido.findByPk(pago.pedidoId);
       if (!pedidoActualizado.esVenta && pedidoActualizado.metodoPago === 'Abono') {
         const pagosRelevantes = await Pago.findAll({ 
@@ -242,11 +255,7 @@ exports.cambiarEstado = async (req, res) => {
           console.log(`✅ Pedido ${pedidoActualizado.id} convertido a venta`);
         }
       }
-    } else if (oldEstado === 'aplicado' && estado !== 'aplicado') {
-      await actualizarTotalPagado(pago.pedidoId);
     }
-
-    await t.commit();
 
     return successResponse(res, pago, 'Estado actualizado');
   } catch (error) {
