@@ -26,6 +26,7 @@ async function actualizarTotalPagado(pedidoId, trans = null) {
       },
       transaction: trans
     });
+    console.log(`[actualizarTotalPagado] pagos encontrados:`, pagosRelevantes.map(p => ({id: p.id, monto: p.monto, estado: p.estado})));
     const total = pagosRelevantes.reduce((sum, p) => sum + parseFloat(p.monto), 0);
     await pedido.update({ totalPagado: total }, { transaction: trans });
     
