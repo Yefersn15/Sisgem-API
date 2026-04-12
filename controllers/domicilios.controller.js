@@ -173,6 +173,8 @@ exports.cambiarEstado = async (req, res) => {
     let updateData = { estado };
     if (estado === 'entregado') {
       updateData.fechaAsignacion = new Date();
+      const pedido = await Pedido.findByPk(domicilio.pedidoId, { transaction: t });
+      
       if (domicilio.Pedido && domicilio.Pedido.metodoPago !== 'Abono') {
         await Pedido.update({
           esVenta: true,
@@ -180,7 +182,6 @@ exports.cambiarEstado = async (req, res) => {
           estadoPedido: 'entregado'
         }, { where: { id: domicilio.pedidoId }, transaction: t });
       } else if (domicilio.Pedido && domicilio.Pedido.metodoPago === 'Abono') {
-        const pedido = await Pedido.findByPk(domicilio.pedidoId, { transaction: t });
         if (pedido && !pedido.esVenta) {
           const saldoPendiente = parseFloat(pedido.total) - (parseFloat(pedido.totalPagado) || 0);
           if (saldoPendiente > 0) {
@@ -208,6 +209,8 @@ exports.cambiarEstado = async (req, res) => {
         } else {
           await pedido.update({ estadoPedido: 'entregado' }, { transaction: t });
         }
+      } else if (pedido) {
+        await pedido.update({ estadoPedido: 'entregado' }, { transaction: t });
       }
     }
     if (tarifa_aplicada !== undefined) {
@@ -291,6 +294,13 @@ exports.asignarRepartidor = async (req, res) => {
         updateData.costo = tarifaNum;
         updateData.tarifaAplicada = tarifaNum;
         console.log('[asignarRepartidor] Added to update:', { costo: tarifaNum, tarifaAplicada: tarifaNum });
+        
+        const pedido = await Pedido.findByPk(domicilio.pedidoId, { transaction: t });
+        if (pedido) {
+          const nuevoTotal = (parseFloat(pedido.subtotal) || 0) + tarifaNum;
+          await pedido.update({ total: nuevoTotal }, { transaction: t });
+          console.log('[asignarRepartidor] Updated pedido total:', nuevoTotal);
+        }
       }
     }
     console.log('[asignarRepartidor] Full updateData:', JSON.stringify(updateData));
