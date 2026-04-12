@@ -1,4 +1,5 @@
-const { Pago, Pedido, Producto, Usuario, sequelize, Op } = require('../models');
+const { Pago, Pedido, Producto, Usuario, sequelize } = require('../models');
+const { Op } = require('sequelize');
 const { successResponse, errorResponse } = require('../utils/helpers');
 
 async function actualizarTotalPagado(pedidoId, trans = null) {
