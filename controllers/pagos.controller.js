@@ -78,6 +78,10 @@ exports.crear = async (req, res) => {
       await t.rollback();
       return errorResponse(res, 'Pedido no encontrado', 404);
     }
+    if (pedido.metodoPago !== 'Abono') {
+      await t.rollback();
+      return errorResponse(res, 'Solo se pueden registrar pagos para pedidos con método Abono', 400);
+    }
     console.log('[pagos.crear] pedido:', pedido.id, 'tipoVenta:', pedido.tipoVenta, 'estadoPedido:', pedido.estadoPedido, 'metodoPago:', pedido.metodoPago);
 
     const validDeliveryStates = ['pendiente', 'aprobado', 'en_preparacion', 'asignado', 'en_camino', 'entregado'];
