@@ -1,4 +1,4 @@
-const { Pedido, Producto, Usuario, Domicilio, sequelize } = require('../models');
+const { Pedido, Producto, Usuario, Domicilio, Pago, sequelize, Op } = require('../models');
 const { successResponse, errorResponse } = require('../utils/helpers');
 
 exports.crear = async (req, res) => {
@@ -146,7 +146,15 @@ exports.cambiarEstadoPedido = async (req, res) => {
     await pedido.update({ estadoPedido: estado_pedido }, { transaction: t });
 
     if (estado_pedido === 'entregado' && !pedido.esVenta) {
-      const productos = pedido.productos || [];
+      const { actualizarTotalPagado } = require('./pagos.controller');
+      await actualizarTotalPagado(pedido.id, t);
+      
+      const pedidoActualizado = await Pedido.findByPk(pedido.id, { transaction: t });
+      if (parseFloat(pedidoActualizado.totalPagado) >= parseFloat(pedidoActualizado.total)) {
+        await pedidoActualizado.update({ esVenta: true, estadoVenta: 'completada' }, { transaction: t });
+      }
+      
+      const productos = pedidoActualizado.productos || [];
       for (const item of productos) {
         const producto = await Producto.findByPk(item.producto, { transaction: t });
         if (producto) {
@@ -158,7 +166,6 @@ exports.cambiarEstadoPedido = async (req, res) => {
           await producto.update({ stock: nuevoStock }, { transaction: t });
         }
       }
-      await pedido.update({ esVenta: true, estadoVenta: 'completada' }, { transaction: t });
     }
 
     await t.commit();

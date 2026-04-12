@@ -1,4 +1,4 @@
-const { Domicilio, Pedido, Pago, Usuario, sequelize } = require('../models');
+const { Domicilio, Pedido, Pago, Usuario, sequelize, Op } = require('../models');
 const { successResponse, errorResponse } = require('../utils/helpers');
 
 exports.listar = async (req, res) => {
@@ -130,8 +130,17 @@ exports.cambiarEstado = async (req, res) => {
     
     // Si el domicilio ya está entregado y el pedido no se convirtió, intentar convertir
     if (domicilio.estado === 'entregado' && pedido && !pedido.esVenta && (forzar === true || estado === 'entregado')) {
-      const saldoPendiente = parseFloat(pedido.total) - (parseFloat(pedido.totalPagado) || 0);
-      if (saldoPendiente > 0) {
+      // Recalcular total pagado desde los pagos
+      const { actualizarTotalPagado } = require('./pagos.controller');
+      await actualizarTotalPagado(pedido.id, t);
+      
+      // Volver a cargar el pedido para tener el totalPagado actualizado
+      const pedidoActualizado = await Pedido.findByPk(pedido.id, { transaction: t });
+      const saldoPendiente = parseFloat(pedidoActualizado.total) - (parseFloat(pedidoActualizado.totalPagado) || 0);
+      
+      if (saldoPendiente <= 0) {
+        await pedidoActualizado.update({ esVenta: true, estadoVenta: 'completada' }, { transaction: t });
+      } else {
         await Pago.create({
           pedidoId: pedido.id,
           monto: saldoPendiente,
@@ -140,18 +149,7 @@ exports.cambiarEstado = async (req, res) => {
           referencia: 'Pago automático al entregar domicilio',
           tipo: 'pago_total'
         }, { transaction: t });
-        await pedido.update({
-          totalPagado: pedido.total,
-          esVenta: true,
-          estadoVenta: 'completada',
-          estadoPedido: 'entregado'
-        }, { transaction: t });
-      } else {
-        await pedido.update({
-          esVenta: true,
-          estadoVenta: 'completada',
-          estadoPedido: 'entregado'
-        }, { transaction: t });
+        await actualizarTotalPagado(pedido.id, { transaction: t });
       }
       await t.commit();
       return successResponse(res, domicilio, 'Pedido convertido a venta');

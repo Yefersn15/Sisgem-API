@@ -1,25 +1,23 @@
-const { Pago, Pedido, Producto, Usuario, sequelize } = require('../models');
+const { Pago, Pedido, Producto, Usuario, sequelize, Op } = require('../models');
 const { successResponse, errorResponse } = require('../utils/helpers');
 
-async function actualizarTotalPagado(pedidoId) {
-  const pedido = await Pedido.findByPk(pedidoId);
+async function actualizarTotalPagado(pedidoId, transaction = null) {
+  const pedido = await Pedido.findByPk(pedidoId, { transaction });
   if (!pedido) return 0;
   
-  // Incluir tanto aplicados como pendientes
   const pagosRelevantes = await Pago.findAll({ 
     where: {
       pedidoId,
-      estado: { [require('sequelize').Op.in]: ['aplicado', 'pendiente'] }
-    }
+      estado: { [Op.in]: ['aplicado', 'pendiente'] }
+    },
+    transaction
   });
   const total = pagosRelevantes.reduce((sum, p) => sum + parseFloat(p.monto), 0);
-  await pedido.update({ totalPagado: total });
+  await pedido.update({ totalPagado: total }, { transaction });
   
-  // Convertir a venta automáticamente si el total pagado alcanza el total del pedido
-  // Esto aplica tanto para pagos aplicados como pendientes
-  if (pedido.metodoPago === 'Abono' && !pedido.esVenta && total >= parseFloat(pedido.total)) {
-    await pedido.update({ esVenta: true, estadoVenta: 'completada' });
-    console.log(`[actualizarTotalPagado] Pedido ${pedidoId} convertido a venta automáticamente`);
+  if (pedido.estadoPedido === 'entregado' && total >= parseFloat(pedido.total) && !pedido.esVenta) {
+    await pedido.update({ esVenta: true, estadoVenta: 'completada' }, { transaction });
+    console.log(`✅ Pedido ${pedidoId} convertido a venta (pagado + entregado)`);
   }
   
   return total;
@@ -83,19 +81,20 @@ exports.crear = async (req, res) => {
     if (nuevoPago.estado === 'aplicado') {
       await actualizarTotalPagado(nuevoPago.pedidoId, { transaction: t });
       
-      const pedido = await Pedido.findByPk(nuevoPago.pedidoId, { transaction: t });
-      if (pedido && pedido.metodoPago === 'Abono' && !pedido.esVenta) {
-        // Calcular total incluyendo pagos pendientes
+      const pedidoActualizado = await Pedido.findByPk(nuevoPago.pedidoId, { transaction: t });
+      if (pedidoActualizado.esVenta) {
+        console.log(`Pedido ${pedidoActualizado.id} convertido a venta automáticamente`);
+      } else if (pedidoActualizado.metodoPago === 'Abono') {
         const pagosRelevantes = await Pago.findAll({ 
           where: { 
-            pedidoId: pedido.id,
-            estado: { [require('sequelize').Op.in]: ['aplicado', 'pendiente'] }
+            pedidoId: pedidoActualizado.id,
+            estado: { [Op.in]: ['aplicado', 'pendiente'] }
           }
-        });
+        }, { transaction: t });
         const totalPagado = pagosRelevantes.reduce((sum, p) => sum + parseFloat(p.monto), 0);
         
-        if (totalPagado >= parseFloat(pedido.total)) {
-          await pedido.update({ esVenta: true, estadoVenta: 'completada' }, { transaction: t });
+        if (totalPagado >= parseFloat(pedidoActualizado.total)) {
+          await pedidoActualizado.update({ esVenta: true, estadoVenta: 'completada' }, { transaction: t });
         }
       }
     }
@@ -156,17 +155,19 @@ exports.actualizar = async (req, res) => {
 
     if (oldEstado !== 'aplicado' && estado === 'aplicado') {
       await actualizarTotalPagado(pago.pedidoId, { transaction: t });
-      const pedido = await Pedido.findByPk(pago.pedidoId, { transaction: t });
-      if (pedido && pedido.metodoPago === 'Abono' && !pedido.esVenta) {
+      const pedidoActualizado = await Pedido.findByPk(pago.pedidoId, { transaction: t });
+      if (pedidoActualizado.esVenta) {
+        console.log(`Pedido ${pedidoActualizado.id} convertido a venta automáticamente`);
+      } else if (pedidoActualizado.metodoPago === 'Abono') {
         const pagosRelevantes = await Pago.findAll({ 
           where: { 
-            pedidoId: pedido.id,
-            estado: { [require('sequelize').Op.in]: ['aplicado', 'pendiente'] }
+            pedidoId: pedidoActualizado.id,
+            estado: { [Op.in]: ['aplicado', 'pendiente'] }
           }
-        });
+        }, { transaction: t });
         const totalPagado = pagosRelevantes.reduce((sum, p) => sum + parseFloat(p.monto), 0);
-        if (totalPagado >= parseFloat(pedido.total)) {
-          await pedido.update({ esVenta: true, estadoVenta: 'completada' }, { transaction: t });
+        if (totalPagado >= parseFloat(pedidoActualizado.total)) {
+          await pedidoActualizado.update({ esVenta: true, estadoVenta: 'completada' }, { transaction: t });
         }
       }
     } else if (oldEstado === 'aplicado' && estado !== 'aplicado') {
@@ -203,17 +204,19 @@ exports.cambiarEstado = async (req, res) => {
 
     if (oldEstado !== 'aplicado' && estado === 'aplicado') {
       await actualizarTotalPagado(pago.pedidoId, { transaction: t });
-      const pedido = await Pedido.findByPk(pago.pedidoId, { transaction: t });
-      if (pedido && pedido.metodoPago === 'Abono' && !pedido.esVenta) {
+      const pedidoActualizado = await Pedido.findByPk(pago.pedidoId, { transaction: t });
+      if (pedidoActualizado.esVenta) {
+        console.log(`Pedido ${pedidoActualizado.id} convertido a venta automáticamente`);
+      } else if (pedidoActualizado.metodoPago === 'Abono') {
         const pagosRelevantes = await Pago.findAll({ 
           where: { 
-            pedidoId: pedido.id,
-            estado: { [require('sequelize').Op.in]: ['aplicado', 'pendiente'] }
+            pedidoId: pedidoActualizado.id,
+            estado: { [Op.in]: ['aplicado', 'pendiente'] }
           }
-        });
+        }, { transaction: t });
         const totalPagado = pagosRelevantes.reduce((sum, p) => sum + parseFloat(p.monto), 0);
-        if (totalPagado >= parseFloat(pedido.total)) {
-          await pedido.update({ esVenta: true, estadoVenta: 'completada' }, { transaction: t });
+        if (totalPagado >= parseFloat(pedidoActualizado.total)) {
+          await pedidoActualizado.update({ esVenta: true, estadoVenta: 'completada' }, { transaction: t });
         }
       }
     } else if (oldEstado === 'aplicado' && estado !== 'aplicado') {
