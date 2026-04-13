@@ -1,4 +1,4 @@
-const { Producto, Categoria, Marca } = require('../models');
+const { Producto, Categoria, Marca, Proveedor } = require('../models');
 const { successResponse, errorResponse } = require('../utils/helpers');
 
 exports.listar = async (req, res) => {
@@ -104,7 +104,8 @@ exports.verDetalle = async (req, res) => {
     const producto = await Producto.findByPk(id, {
       include: [
         { model: Categoria, as: 'categoria', attributes: ['nombre'] },
-        { model: Marca, as: 'marca', attributes: ['nombre'] }
+        { model: Marca, as: 'marca', attributes: ['nombre'] },
+        { model: Proveedor, as: 'proveedor', attributes: ['nombre', 'nit'] }
       ]
     });
 
