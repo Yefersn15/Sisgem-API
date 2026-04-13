@@ -97,7 +97,7 @@ exports.verDetallePorDocumento = async (req, res) => {
     const usuario = await Usuario.findOne({
       where: { documento },
       include: [
-        { model: Rol, attributes: ['nombre'] },
+        { model: Rol, attributes: ['id', 'nombre'], as: 'rol' },
         { model: Proveedor, attributes: ['nombre'], as: 'proveedor' }
       ],
       attributes: { exclude: ['password'] }
@@ -120,7 +120,7 @@ exports.verDetalle = async (req, res) => {
 
     const usuario = await Usuario.findByPk(id, {
       include: [
-        { model: Rol, attributes: ['nombre'] },
+        { model: Rol, attributes: ['id', 'nombre'], as: 'rol' },
         { model: Proveedor, attributes: ['nombre'], as: 'proveedor' }
       ],
       attributes: { exclude: ['password'] }
@@ -158,7 +158,7 @@ exports.actualizar = async (req, res) => {
       nombre: nombre || usuario.nombre,
       apellido: apellido !== undefined ? apellido : usuario.apellido,
       telefono: telefono !== undefined ? telefono : usuario.telefono,
-      rolId: rolId || usuario.rolId,
+      rolId: rolId !== undefined && rolId !== '' ? rolId : usuario.rolId,
       email: email || usuario.email,
       tipoDocumento: tipoDocumento || usuario.tipoDocumento,
       genero: genero !== undefined ? genero : usuario.genero,
