@@ -201,16 +201,16 @@ exports.domiciliosEficiencia = async (req, res) => {
     const fechaInicio = new Date();
     fechaInicio.setDate(fechaInicio.getDate() - parseInt(dias));
     
-    const domicilios = await Domicilio.findAll({
+    const domicilioQuery = await Domicilio.findAll({
       where: {
         createdAt: { [Op.gte]: fechaInicio }
       }
     });
     
-const totalDomicilios = domicilios.length;
-    const entregados = domicilios.filter(d => d.estado === 'entregado').length;
-    const enCamino = domicilios.filter(d => d.estado === 'en_camino').length;
-    const asignados = domicilios.filter(d => d.estado === 'asignado').length;
+    const totalDomicilios = domicilioQuery.length;
+    const entregados = domicilioQuery.filter(d => d.estado === 'entregado').length;
+    const enCamino = domicilioQuery.filter(d => d.estado === 'en_camino').length;
+    const asignados = domicilioQuery.filter(d => d.estado === 'asignado').length;
     
     return successResponse(res, {
       totalDomicilios,
@@ -218,6 +218,83 @@ const totalDomicilios = domicilios.length;
       enCamino,
       asignados,
       tasaEntrega: totalDomicilios > 0 ? (entregados / totalDomicilios) * 100 : 0
+    });
+  } catch (error) {
+    return errorResponse(res, error.message);
+  }
+};
+
+exports.index = async (req, res) => {
+  try {
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+    
+    const finDia = new Date(hoy);
+    finDia.setDate(finDia.getDate() + 1);
+    
+    const pedidosHoy = await Pedido.findAll({
+      where: {
+        createdAt: { [Op.between]: [hoy, finDia] },
+        estadoPedido: { [Op.notIn]: ['cancelado', 'anulado'] }
+      }
+    });
+    
+    const ventasHoy = pedidosHoy.reduce((sum, p) => sum + parseFloat(p.total || 0), 0);
+    
+    const haceUnaSemana = new Date(hoy);
+    haceUnaSemana.setDate(haceUnaSemana.getDate() - 7);
+    
+    const pedidosSemana = await Pedido.findAll({
+      where: {
+        createdAt: { [Op.between]: [haceUnaSemana, finDia] },
+        estadoPedido: { [Op.notIn]: ['cancelado', 'anulado'] }
+      }
+    });
+    
+    const ventasSemana = pedidosSemana.reduce((sum, p) => sum + parseFloat(p.total || 0), 0);
+    
+    const haceUnMes = new Date(hoy);
+    haceUnMes.setMonth(haceUnMes.getMonth() - 1);
+    
+    const pedidosMes = await Pedido.findAll({
+      where: {
+        createdAt: { [Op.between]: [haceUnMes, finDia] },
+        estadoPedido: { [Op.notIn]: ['cancelado', 'anulado'] }
+      }
+    });
+    
+    const ventasMes = pedidosMes.reduce((sum, p) => sum + parseFloat(p.total || 0), 0);
+    
+    const productosActivos = await Producto.count({ where: { estado: true } });
+    const productosStockBajo = await Producto.count({
+      where: {
+        estado: true,
+        [Op.or]: [
+          { stock: { [Op.lte]: sequelize.col('stockMinimo') } },
+          { stock: { [Op.lt]: 5 } }
+        ]
+      }
+    });
+    
+    const pedidosPendientes = await Pedido.count({
+      where: {
+        estadoPedido: { [Op.in]: ['Pendiente', 'aprobado', 'enviado'] }
+      }
+    });
+    
+    const usuariosActivos = await Usuario.count({ where: { estado: true } });
+    
+    return successResponse(res, {
+      ventasHoy,
+      pedidosHoy: pedidosHoy.length,
+      ventasSemana,
+      pedidosSemana: pedidosSemana.length,
+      ventasMes,
+      pedidosMes: pedidosMes.length,
+      productosActivos,
+      productosStockBajo,
+      pedidosPendientes,
+      usuariosActivos
     });
   } catch (error) {
     return errorResponse(res, error.message);

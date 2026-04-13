@@ -184,3 +184,67 @@ exports.changePassword = async (req, res) => {
     return errorResponse(res, error.message);
   }
 };
+
+exports.forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+    
+    if (!email) {
+      return errorResponse(res, 'El email es requerido', 400);
+    }
+    
+    const usuario = await Usuario.findOne({ where: { email } });
+    if (!usuario) {
+      return successResponse(res, null, 'Si el email existe, recibirás un enlace para restablecer tu contraseña');
+    }
+    
+    const resetToken = jwt.sign(
+      { documento: usuario.documento, type: 'password-reset' },
+      process.env.JWT_SECRET,
+      { expiresIn: '1h' }
+    );
+    
+    return successResponse(res, { resetToken }, 'Si el email existe, recibirás un enlace para restablecer tu contraseña');
+  } catch (error) {
+    console.error(error);
+    return errorResponse(res, error.message);
+  }
+};
+
+exports.resetPassword = async (req, res) => {
+  try {
+    const { token, password } = req.body;
+    
+    if (!token || !password) {
+      return errorResponse(res, 'Token y nueva contraseña son requeridos', 400);
+    }
+    
+    if (password.length < 6) {
+      return errorResponse(res, 'La contraseña debe tener al menos 6 caracteres', 400);
+    }
+    
+    let decoded;
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET);
+    } catch (e) {
+      return errorResponse(res, 'Token expirado o inválido', 400);
+    }
+    
+    if (decoded.type !== 'password-reset') {
+      return errorResponse(res, 'Token inválido', 400);
+    }
+    
+    const usuario = await Usuario.findByPk(decoded.documento);
+    if (!usuario) {
+      return errorResponse(res, 'Usuario no encontrado', 404);
+    }
+    
+    usuario.password = password;
+    await usuario.save();
+    
+    return successResponse(res, null, 'Contraseña restablecida correctamente');
+  } catch (error) {
+    console.error(error);
+    return errorResponse(res, error.message);
+  }
+};

@@ -3,6 +3,9 @@ const router = express.Router();
 const dashboardController = require('../controllers/dashboard.controller');
 const { verifyToken, checkRole } = require('../middlewares/auth');
 
+// Ruta principal de dashboard (sin autenticación para la app móvil)
+router.get('/', verifyToken, checkRole(['ADMIN']), dashboardController.index);
+
 // Rutas protegidas - Solo ADMIN
 router.get('/ventas/dia', verifyToken, checkRole(['ADMIN']), dashboardController.ventasDia);
 router.get('/ventas/semana', verifyToken, checkRole(['ADMIN']), dashboardController.ventasSemana);
