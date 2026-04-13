@@ -170,7 +170,7 @@ exports.actualizar = async (req, res) => {
 
     const usuarioActualizado = await Usuario.findByPk(usuario.documento, {
       include: [
-        { model: Rol, attributes: ['nombre'] },
+        { model: Rol, attributes: ['id', 'nombre'], as: 'rol' },
         { model: Proveedor, attributes: ['nombre'], as: 'proveedor' }
       ],
       attributes: { exclude: ['password'] }
