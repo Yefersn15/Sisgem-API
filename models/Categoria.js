@@ -16,16 +16,6 @@ const Categoria = sequelize.define('Categoria', {
     type: DataTypes.TEXT,
     allowNull: true
   },
-  fotoUrl: {
-    type: DataTypes.TEXT,
-    allowNull: true,
-    field: 'foto_url'
-  },
-  fotoData: {
-    type: DataTypes.BLOB,
-    allowNull: true,
-    field: 'foto_data'
-  },
   estado: {
     type: DataTypes.BOOLEAN,
     defaultValue: true

@@ -26,7 +26,7 @@ exports.listar = async (req, res) => {
 
 exports.crear = async (req, res) => {
   try {
-    const { nombre, descripcion, fotoUrl } = req.body;
+    const { nombre, descripcion } = req.body;
 
     const existeCategoria = await Categoria.findOne({ 
       where: { nombre: nombre.toUpperCase() } 
@@ -37,8 +37,7 @@ exports.crear = async (req, res) => {
 
     const nuevaCategoria = await Categoria.create({
       nombre: nombre.toUpperCase(),
-      descripcion,
-      fotoUrl
+      descripcion
     });
 
     return successResponse(res, nuevaCategoria, 'Categoría creada exitosamente', 201);
@@ -67,7 +66,7 @@ exports.verDetalle = async (req, res) => {
 exports.actualizar = async (req, res) => {
   try {
     const { id } = req.params;
-    const { nombre, descripcion, fotoUrl, estado } = req.body;
+    const { nombre, descripcion, estado } = req.body;
 
     const categoria = await Categoria.findByPk(id);
     if (!categoria) {
@@ -86,7 +85,6 @@ exports.actualizar = async (req, res) => {
     await categoria.update({
       nombre: nombre ? nombre.toUpperCase() : categoria.nombre,
       descripcion: descripcion !== undefined ? descripcion : categoria.descripcion,
-      fotoUrl: fotoUrl !== undefined ? fotoUrl : categoria.fotoUrl,
       estado: estado !== undefined ? estado : categoria.estado
     });
 
