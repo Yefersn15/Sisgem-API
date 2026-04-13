@@ -103,8 +103,8 @@ exports.verDetalle = async (req, res) => {
 
     const producto = await Producto.findByPk(id, {
       include: [
-        { model: Categoria, attributes: ['nombre'] },
-        { model: Marca, attributes: ['nombre'] }
+        { model: Categoria, as: 'categoria', attributes: ['nombre'] },
+        { model: Marca, as: 'marca', attributes: ['nombre'] }
       ]
     });
 
@@ -146,8 +146,8 @@ exports.actualizar = async (req, res) => {
 
     const productoActualizado = await Producto.findByPk(id, {
       include: [
-        { model: Categoria, attributes: ['nombre'] },
-        { model: Marca, attributes: ['nombre'] }
+        { model: Categoria, as: 'categoria', attributes: ['nombre'] },
+        { model: Marca, as: 'marca', attributes: ['nombre'] }
       ]
     });
 
@@ -206,8 +206,24 @@ exports.stockBajo = async (req, res) => {
         ]
       },
       include: [
-        { model: Categoria, attributes: ['nombre'] },
-        { model: Marca, attributes: ['nombre'] }
+        { model: Categoria, as: 'categoria', attributes: ['nombre'] },
+        { model: Marca, as: 'marca', attributes: ['nombre'] }
+      ]
+    });
+
+    return successResponse(res, productos);
+  } catch (error) {
+    console.error(error);
+    return errorResponse(res, error.message);
+  }
+};
+
+exports.exportar = async (req, res) => {
+  try {
+    const productos = await Producto.findAll({
+      include: [
+        { model: Categoria, as: 'categoria', attributes: ['nombre'] },
+        { model: Marca, as: 'marca', attributes: ['nombre'] }
       ]
     });
 
@@ -235,8 +251,8 @@ exports.exportar = async (req, res) => {
   try {
     const productos = await Producto.findAll({
       include: [
-        { model: Categoria, attributes: ['nombre'] },
-        { model: Marca, attributes: ['nombre'] }
+        { model: Categoria, as: 'categoria', attributes: ['nombre'] },
+        { model: Marca, as: 'marca', attributes: ['nombre'] }
       ]
     });
 
