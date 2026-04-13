@@ -10,6 +10,7 @@ const Pago = require('./Pago');
 const Domicilio = require('./Domicilio');
 const OrdenCompra = require('./OrdenCompra');
 const Banner = require('./Banner');
+const Catalogo = require('./Catalogo');
 
 Proveedor.hasMany(Marca, { foreignKey: 'proveedorId', as: 'marcas' });
 Marca.belongsTo(Proveedor, { foreignKey: 'proveedorId', as: 'proveedor' });
@@ -44,6 +45,9 @@ OrdenCompra.belongsTo(Proveedor, { foreignKey: 'proveedorId', as: 'proveedor' })
 Usuario.hasMany(OrdenCompra, { foreignKey: 'usuarioId', as: 'ordenes' });
 OrdenCompra.belongsTo(Usuario, { foreignKey: 'usuarioId', as: 'usuario' });
 
+Proveedor.hasMany(Catalogo, { foreignKey: 'proveedorId', as: 'catalogo' });
+Catalogo.belongsTo(Proveedor, { foreignKey: 'proveedorId', as: 'proveedor' });
+
 module.exports = {
   sequelize,
   Rol,
@@ -56,5 +60,6 @@ module.exports = {
   Pago,
   Domicilio,
   OrdenCompra,
-  Banner
+  Banner,
+  Catalogo
 };

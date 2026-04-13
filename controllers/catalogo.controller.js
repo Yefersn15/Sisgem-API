@@ -1,4 +1,4 @@
-const { Producto, Categoria, Marca, Usuario } = require('../models');
+const { Producto, Categoria, Marca, Usuario, Proveedor, Catalogo } = require('../models');
 const { successResponse, errorResponse } = require('../utils/helpers');
 const { Op } = require('sequelize');
 
@@ -218,6 +218,158 @@ exports.eliminarProducto = async (req, res) => {
 
     await producto.destroy();
     return successResponse(res, null, 'Producto eliminado');
+  } catch (error) {
+    return errorResponse(res, error.message);
+  }
+};
+
+// ================== NUEVO CATÁLOGO (Tabla separada) ==================
+
+// Listar catálogo (con filtros por proveedor)
+exports.listar = async (req, res) => {
+  try {
+    const { proveedorId } = req.query;
+    const where = {};
+
+    // Si es PROVEEDOR, solo puede ver su propio catálogo
+    if (req.user.rol === 'PROVEEDOR') {
+      const usuario = await Usuario.findByPk(req.user.documento);
+      if (!usuario?.proveedorId) {
+        return errorResponse(res, 'Proveedor no vinculado', 403);
+      }
+      where.proveedorId = usuario.proveedorId;
+    } else if (proveedorId) {
+      where.proveedorId = proveedorId;
+    }
+
+    const items = await Catalogo.findAll({
+      where,
+      include: [
+        { model: Proveedor, as: 'proveedor', attributes: ['id', 'nombre', 'nit'] }
+      ],
+      order: [['nombre', 'ASC']]
+    });
+
+    return successResponse(res, items);
+  } catch (error) {
+    console.error('Error en listar catálogo:', error);
+    return errorResponse(res, error.message);
+  }
+};
+
+// Ver detalle de ítem del catálogo
+exports.ver = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const item = await Catalogo.findByPk(id, {
+      include: [
+        { model: Proveedor, as: 'proveedor', attributes: ['id', 'nombre', 'nit'] }
+      ]
+    });
+
+    if (!item) {
+      return errorResponse(res, 'Ítem no encontrado', 404);
+    }
+
+    return successResponse(res, item);
+  } catch (error) {
+    return errorResponse(res, error.message);
+  }
+};
+
+// Crear ítem en el catálogo
+exports.crear = async (req, res) => {
+  try {
+    const { proveedorId, nombre, descripcion, precioSugerido, imagen, categoriaNombre, marcaNombre, estadoStock } = req.body;
+
+    if (!nombre) {
+      return errorResponse(res, 'El nombre es requerido', 400);
+    }
+
+    // Determinar el proveedorId
+    let provId = proveedorId;
+    if (req.user.rol === 'PROVEEDOR') {
+      const usuario = await Usuario.findByPk(req.user.documento);
+      if (!usuario?.proveedorId) {
+        return errorResponse(res, 'Proveedor no vinculado', 403);
+      }
+      provId = usuario.proveedorId;
+    }
+
+    if (!provId) {
+      return errorResponse(res, 'El proveedor es requerido', 400);
+    }
+
+    const nuevoItem = await Catalogo.create({
+      proveedorId: provId,
+      nombre,
+      descripcion,
+      precioSugerido: precioSugerido || 0,
+      imagen,
+      categoriaNombre,
+      marcaNombre,
+      estadoStock: estadoStock || 'Disponible'
+    });
+
+    return successResponse(res, nuevoItem, 'Ítem creado en catálogo', 201);
+  } catch (error) {
+    console.error('Error en crear catálogo:', error);
+    return errorResponse(res, error.message);
+  }
+};
+
+// Actualizar ítem del catálogo
+exports.actualizar = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { nombre, descripcion, precioSugerido, imagen, categoriaNombre, marcaNombre, estadoStock } = req.body;
+
+    const item = await Catalogo.findByPk(id);
+    if (!item) {
+      return errorResponse(res, 'Ítem no encontrado', 404);
+    }
+
+    // Verificar permisos
+    if (req.user.rol === 'PROVEEDOR') {
+      const usuario = await Usuario.findByPk(req.user.documento);
+      if (!usuario?.proveedorId || item.proveedorId !== usuario.proveedorId) {
+        return errorResponse(res, 'No tienes permiso para editar este ítem', 403);
+      }
+    }
+
+    await item.update({
+      nombre: nombre || item.nombre,
+      descripcion: descripcion !== undefined ? descripcion : item.descripcion,
+      precioSugerido: precioSugerido !== undefined ? precioSugerido : item.precioSugerido,
+      imagen: imagen !== undefined ? imagen : item.imagen,
+      categoriaNombre: categoriaNombre !== undefined ? categoriaNombre : item.categoriaNombre,
+      marcaNombre: marcaNombre !== undefined ? marcaNombre : item.marcaNombre,
+      estadoStock: estadoStock || item.estadoStock
+    });
+
+    return successResponse(res, item, 'Ítem actualizado');
+  } catch (error) {
+    return errorResponse(res, error.message);
+  }
+};
+
+// Eliminar ítem del catálogo
+exports.eliminar = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const item = await Catalogo.findByPk(id);
+    if (!item) {
+      return errorResponse(res, 'Ítem no encontrado', 404);
+    }
+
+    // Solo ADMIN puede eliminar
+    if (req.user.rol !== 'ADMIN') {
+      return errorResponse(res, 'No tienes permiso para eliminar ítems', 403);
+    }
+
+    await item.destroy();
+    return successResponse(res, null, 'Ítem eliminado');
   } catch (error) {
     return errorResponse(res, error.message);
   }

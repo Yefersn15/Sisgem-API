@@ -1,4 +1,4 @@
-const { OrdenCompra, Producto, Categoria, Marca, Proveedor, Usuario, sequelize } = require('../models');
+const { OrdenCompra, Producto, Categoria, Marca, Proveedor, Usuario, Catalogo, sequelize } = require('../models');
 const { successResponse, errorResponse } = require('../utils/helpers');
 
 exports.listar = async (req, res) => {
@@ -36,7 +36,8 @@ exports.crear = async (req, res) => {
       subtotal += itemSubtotal;
 
       productosOrden.push({
-        productoExistenteId: item.productoExistenteId || null,
+        tipo: item.tipo || 'producto_existente',
+        referenciaId: item.referenciaId || item.productoExistenteId || null,
         nombre: item.nombre,
         descripcion: item.descripcion,
         imagen: item.imagen,
@@ -165,12 +166,29 @@ exports.cambiarEstado = async (req, res) => {
       return errorResponse(res, `No se puede pasar de ${orden.estado} a ${estado}`, 400);
     }
 
-    if (estado === 'confirmada') {
+    const estadosConfirmacion = ['confirmada', 'recibida'];
+    if (estadosConfirmacion.includes(estado) && !estadosConfirmacion.includes(orden.estado)) {
       for (const item of orden.productos) {
-        if (item.productoExistenteId) {
-          const producto = await Producto.findByPk(item.productoExistenteId, { transaction: t });
+        if (item.tipo === 'producto_existente' && item.referenciaId) {
+          const producto = await Producto.findByPk(item.referenciaId, { transaction: t });
           if (producto) {
             await producto.update({ stock: producto.stock + item.cantidad }, { transaction: t });
+          }
+        } else if (item.tipo === 'catalogo' && item.referenciaId) {
+          const catalogoItem = await Catalogo.findByPk(item.referenciaId, { transaction: t });
+          if (catalogoItem) {
+            await Producto.create({
+              nombre: catalogoItem.nombre,
+              descripcion: catalogoItem.descripcion,
+              precio: item.precio_unitario,
+              stock: item.cantidad,
+              imagen: catalogoItem.imagen,
+              categoriaId: null,
+              marcaId: null,
+              proveedorId: catalogoItem.proveedorId,
+              estado: true,
+              activo: true
+            }, { transaction: t });
           }
         }
       }
