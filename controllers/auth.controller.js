@@ -4,7 +4,7 @@ const { successResponse, errorResponse } = require('../utils/helpers');
 
 exports.register = async (req, res) => {
   try {
-    const { nombre, email, password, telefono, apellido, documento, tipoDocumento, genero, direccion, barrio } = req.body;
+    const { nombre, email, password, telefono, apellido, documento, tipoDocumento, genero, direccion, barrio, foto_url } = req.body;
 
     if (!nombre || !email || !password || !documento) {
       return errorResponse(res, 'Campos requeridos: nombre, email, password, documento', 400);
@@ -47,6 +47,7 @@ exports.register = async (req, res) => {
       genero,
       direccion,
       barrio,
+      foto_url,
       rolId: rolUsuario.id
     });
 
