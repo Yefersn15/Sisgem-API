@@ -20,7 +20,7 @@ exports.register = async (req, res) => {
       return errorResponse(res, 'El documento ya está registrado', 400);
     }
 
-    let rolUsuario = await Rol.findOne({ where: { esDefault: true, estado: true } });
+    let rolUsuario = await Rol.findOne({ where: { nombre: 'CLIENTE', estado: true } });
     
     if (!rolUsuario) {
       rolUsuario = await Rol.findOne({ where: { nombre: { [require('sequelize').Op.in]: ['CLIENTE', 'USUARIO', 'USUARIO'] }, estado: true } });
@@ -28,7 +28,7 @@ exports.register = async (req, res) => {
     
     if (!rolUsuario) {
       rolUsuario = await Rol.create({
-        nombre: 'USUARIO',
+        nombre: 'CLIENTE',
         descripcion: 'Rol para clientes registrados',
         permisos: ['perfil.read', 'perfil.write', 'pedidos.read'],
         esDefault: true,

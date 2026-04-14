@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const domiciliosController = require('../controllers/domicilios.controller');
-const { verifyToken, checkRole } = require('../middlewares/auth');
+const { verifyToken, checkRole, checkPermission } = require('../middlewares/auth');
 
 // Rutas protegidas - Solo ADMIN
 router.get('/', verifyToken, checkRole(['ADMIN']), domiciliosController.listar);
@@ -24,5 +24,8 @@ router.delete('/tarifas/:id', verifyToken, checkRole(['ADMIN']),domiciliosContro
 // Rutas para usuarios autenticados (repartidor y cliente)
 router.get('/mis-domicilios', verifyToken,domiciliosController.misDomicilios);
 router.get('/mis-pedidos-domicilio', verifyToken,domiciliosController.misPedidosDomicilio);
+
+// Ruta para que repartidores actualicen el estado de sus propios domicilio
+router.patch('/:id/estado-repartidor', verifyToken, checkPermission('domicilios.write'),domiciliosController.cambiarEstadoRepartidor);
 
 module.exports = router;

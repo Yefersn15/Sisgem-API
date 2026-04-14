@@ -510,3 +510,106 @@ exports.actualizarTarifaTemplate = async (req, res) => {
 exports.eliminarTarifaTemplate = async (req, res) => {
   return errorResponse(res, 'Funcionalidad de tarifas no implementada', 501);
 };
+
+exports.cambiarEstadoRepartidor = async (req, res) => {
+  const t = await sequelize.transaction();
+  try {
+    const { estado } = req.body;
+    const { id } = req.params;
+    const repartidorId = req.user.documento;
+
+    const domicilio = await Domicilio.findByPk(id, { 
+      include: [{ model: Pedido, as: 'pedido' }],
+      transaction: t 
+    });
+    
+    if (!domicilio) {
+      await t.rollback();
+      return errorResponse(res, 'Domicilio no encontrado', 404);
+    }
+
+    // Verificar que el repartidor es el asignado a este domicilio
+    const domicilioRepartidorId = domicilio.repartidorId;
+    if (domicilioRepartidorId !== repartidorId) {
+      await t.rollback();
+      return errorResponse(res, 'No tienes permiso para modificar este domicilio', 403);
+    }
+
+    const transiciones = {
+      'Pendiente': ['aprobado', 'cancelado'],
+      'aprobado': ['asignado', 'cancelado'],
+      'asignado': ['en_camino', 'cancelado'],
+      'en_camino': ['entregado'],
+      'entregado': [],
+      'cancelado': []
+    };
+    
+    if (!transiciones[domicilio.estado]?.includes(estado)) {
+      await t.rollback();
+      return errorResponse(res, `No se puede pasar de ${domicilio.estado} a ${estado}`, 400);
+    }
+
+    let updateData = { estado };
+    if (estado === 'entregado') {
+      updateData.fechaAsignacion = new Date();
+      const pedido = await Pedido.findByPk(domicilio.pedidoId, { transaction: t });
+      
+      if (pedido && pedido.metodoPago !== 'Abono' && !pedido.esVenta) {
+        await Pago.create({
+          pedidoId: pedido.id,
+          monto: pedido.total,
+          metodo: 'Contraentrega',
+          estado: 'aplicado',
+          referencia: `Pago contraentrega - ${pedido.metodoPago}`,
+          tipo: 'pago_total'
+        }, { transaction: t });
+        await Pedido.update({
+          esVenta: true,
+          estadoVenta: 'completada',
+          estadoPedido: 'entregado',
+          totalPagado: pedido.total
+        }, { where: { id: pedido.id }, transaction: t });
+      } else if (pedido && pedido.metodoPago === 'Abono') {
+        if (!pedido.esVenta) {
+          const saldoPendiente = parseFloat(pedido.total) - (parseFloat(pedido.totalPagado) || 0);
+          if (saldoPendiente > 0) {
+            await Pago.create({
+              pedidoId: pedido.id,
+              monto: saldoPendiente,
+              metodo: 'Contraentrega',
+              estado: 'aplicado',
+              referencia: 'Pago automático al entregar domicilio',
+              tipo: 'pago_total'
+            }, { transaction: t });
+            await pedido.update({
+              totalPagado: pedido.total,
+              esVenta: true,
+              estadoVenta: 'completada',
+              estadoPedido: 'entregado'
+            }, { transaction: t });
+          } else {
+            await pedido.update({
+              esVenta: true,
+              estadoVenta: 'completada',
+              estadoPedido: 'entregado'
+            }, { transaction: t });
+          }
+        } else {
+          await pedido.update({ estadoPedido: 'entregado' }, { transaction: t });
+        }
+      } else if (pedido) {
+        await pedido.update({ estadoPedido: 'entregado' }, { transaction: t });
+      }
+    }
+
+    await Domicilio.update(updateData, { where: { id }, transaction: t });
+
+    await t.commit();
+    
+    const domicilioActualizado = await Domicilio.findByPk(id);
+    return successResponse(res, domicilioActualizado, 'Estado actualizado');
+  } catch (error) {
+    await t.rollback();
+    return errorResponse(res, error.message);
+  }
+};
