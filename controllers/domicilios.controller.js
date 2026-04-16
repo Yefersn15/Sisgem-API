@@ -605,19 +605,9 @@ exports.cambiarEstadoRepartidor = async (req, res) => {
     if (!domicilio) {
       await t.rollback();
       return errorResponse(res, 'Domicilio no encontrado', 404);
-     }
-+    
-+    const pedido = domicilio.pedido;
-+    if (!pedido) {
-+      await t.rollback();
-+      return errorResponse(res, 'Pedido asociado no encontrado', 404);
-+    }
-+    if ((pedido.estadoPedido || '').toString().toLowerCase() === 'pendiente') {
-+      await t.rollback();
-+      return errorResponse(res, 'No se puede cambiar estado de domicilio: el pedido está en estado Pendiente', 400);
-+    }
-+    
-+    const pedido = domicilio.pedido;
+    }
+    
+    const pedido = domicilio.pedido;
     if (!pedido) {
       await t.rollback();
       return errorResponse(res, 'Pedido asociado no encontrado', 404);
