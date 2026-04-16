@@ -23,30 +23,23 @@ const checkRole = (roles) => {
       return res.status(401).json({ message: 'Acceso denegado. Autentícate primero' });
     }
 
-    if (Array.isArray(roles) && roles.every(r => typeof r === 'string')) {
-      try {
-        const usuario = await Usuario.findByPk(req.user.documento, {
-          include: [{ model: Rol, as: 'rol' }]
-        });
-        
-        if (!usuario || !usuario.rol) {
-          return res.status(403).json({ message: 'Usuario o rol no encontrado' });
-        }
-        
-        if (usuario.rol.nombre === 'ADMIN' || usuario.rol.nombre === 'ADMINISTRADOR') {
-          return next();
-        }
-        
-        if (!roles.includes(usuario.rol.nombre)) {
-          return res.status(403).json({ message: 'No tienes permiso para realizar esta acción' });
-        }
-        next();
-      } catch (error) {
-        return res.status(500).json({ message: 'Error al verificar rol' });
-      }
+    // Use role from JWT token (set at login)
+    const userRole = req.user.rol;
+    if (!userRole) {
+      return res.status(403).json({ message: 'Usuario o rol no encontrado' });
     }
-    
-    next();
+
+    // ADMIN/ADMINISTRADOR always allowed
+    if (userRole === 'ADMIN' || userRole === 'ADMINISTRADOR') {
+      return next();
+    }
+
+    // Check against allowed roles
+    if (Array.isArray(roles) && roles.includes(userRole)) {
+      return next();
+    }
+
+    return res.status(403).json({ message: 'No tienes permiso para realizar esta acción' });
   };
 };
 

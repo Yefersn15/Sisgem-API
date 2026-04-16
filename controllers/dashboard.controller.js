@@ -123,7 +123,7 @@ exports.stockBajo = async (req, res) => {
       where: {
         estado: true,
         [Op.or]: [
-          { stock: { [Op.lte]: sequelize.col('stockMinimo') } },
+          { stock: { [Op.lte]: sequelize.col('stock_minimo') } },
           { stock: { [Op.lt]: 5 } }
         ]
       },
@@ -270,7 +270,7 @@ exports.index = async (req, res) => {
       where: {
         estado: true,
         [Op.or]: [
-          { stock: { [Op.lte]: sequelize.col('stockMinimo') } },
+          { stock: { [Op.lte]: sequelize.col('stock_minimo') } },
           { stock: { [Op.lt]: 5 } }
         ]
       }

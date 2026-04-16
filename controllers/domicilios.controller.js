@@ -1,4 +1,4 @@
-const { Domicilio, Pedido, Pago, Usuario, sequelize, Op } = require('../models');
+const { Domicilio, Pedido, Pago, Usuario, Producto, sequelize, Op } = require('../models');
 const { successResponse, errorResponse } = require('../utils/helpers');
 
 exports.listar = async (req, res) => {
@@ -151,6 +151,19 @@ exports.cambiarEstado = async (req, res) => {
         }, { transaction: t });
         await actualizarTotalPagado(pedido.id, { transaction: t });
       }
+      // Deduct stock upon delivery
+      const productos = pedidoActualizado.productos || [];
+      for (const item of productos) {
+        const producto = await Producto.findByPk(item.producto, { transaction: t });
+        if (producto) {
+          const nuevoStock = producto.stock - item.cantidad;
+          if (nuevoStock < 0) {
+            await t.rollback();
+            return errorResponse(res, `Stock insuficiente para producto ${producto.nombre}`, 400);
+          }
+          await producto.update({ stock: nuevoStock }, { transaction: t });
+        }
+      }
       await t.commit();
       return successResponse(res, domicilio, 'Pedido convertido a venta');
     }
@@ -222,6 +235,23 @@ exports.cambiarEstado = async (req, res) => {
         await pedido.update({ estadoPedido: 'entregado' }, { transaction: t });
       }
     }
+
+    // Deduct stock when delivery is marked as delivered
+    if (estado === 'entregado') {
+      const productos = pedido.productos || [];
+      for (const item of productos) {
+        const producto = await Producto.findByPk(item.producto, { transaction: t });
+        if (producto) {
+          const nuevoStock = producto.stock - item.cantidad;
+          if (nuevoStock < 0) {
+            await t.rollback();
+            return errorResponse(res, `Stock insuficiente para producto ${producto.nombre}`, 400);
+          }
+          await producto.update({ stock: nuevoStock }, { transaction: t });
+        }
+      }
+    }
+
     if (tarifa_aplicada !== undefined) {
       const diferencia = tarifa_aplicada - (domicilio.tarifaAplicada || 0);
       if (diferencia !== 0 && pedido) {
@@ -599,6 +629,22 @@ exports.cambiarEstadoRepartidor = async (req, res) => {
         }
       } else if (pedido) {
         await pedido.update({ estadoPedido: 'entregado' }, { transaction: t });
+      }
+    }
+
+    // Deduct stock when delivery is marked as delivered
+    if (estado === 'entregado') {
+      const productos = pedido.productos || [];
+      for (const item of productos) {
+        const producto = await Producto.findByPk(item.producto, { transaction: t });
+        if (producto) {
+          const nuevoStock = producto.stock - item.cantidad;
+          if (nuevoStock < 0) {
+            await t.rollback();
+            return errorResponse(res, `Stock insuficiente para producto ${producto.nombre}`, 400);
+          }
+          await producto.update({ stock: nuevoStock }, { transaction: t });
+        }
       }
     }
 

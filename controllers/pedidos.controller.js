@@ -145,15 +145,15 @@ exports.cambiarEstadoPedido = async (req, res) => {
 
     await pedido.update({ estadoPedido: estado_pedido }, { transaction: t });
 
-    if (estado_pedido === 'entregado' && !pedido.esVenta) {
+    // If the order is delivered, update payments, convert to sale if paid, and deduct stock
+    if (estado_pedido === 'entregado') {
       const { actualizarTotalPagado } = require('./pagos.controller');
       await actualizarTotalPagado(pedido.id, t);
-      
+
+      // Fetch updated pedido to get productos
       const pedidoActualizado = await Pedido.findByPk(pedido.id, { transaction: t });
-      if (parseFloat(pedidoActualizado.totalPagado) >= parseFloat(pedidoActualizado.total)) {
-        await pedidoActualizado.update({ esVenta: true, estadoVenta: 'completada' }, { transaction: t });
-      }
-      
+
+      // Deduct stock from products
       const productos = pedidoActualizado.productos || [];
       for (const item of productos) {
         const producto = await Producto.findByPk(item.producto, { transaction: t });
@@ -231,7 +231,7 @@ exports.verDetalle = async (req, res) => {
 
     if (!pedido) return errorResponse(res, 'Pedido no encontrado', 404);
 
-    if (req.user.rol !== 'ADMIN' && pedido.usuarioId !== req.user.documento) {
+    if (req.user.rol !== 'ADMIN' && req.user.rol !== 'ADMINISTRADOR' && pedido.usuarioId !== req.user.documento) {
       return errorResponse(res, 'No autorizado', 403);
     }
 

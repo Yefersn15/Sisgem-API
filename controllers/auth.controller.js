@@ -88,9 +88,9 @@ exports.login = async (req, res) => {
       return errorResponse(res, 'Usuario inactivo', 403);
     }
 
-    const tokenPayload = { 
-      documento: usuario.documento, 
-      rol: usuario.Rol ? usuario.Rol.nombre : 'USUARIO',
+    const tokenPayload = {
+      documento: usuario.documento,
+      rol: usuario.rol ? usuario.rol.nombre : 'USUARIO',
       nombre: usuario.nombre
     };
 

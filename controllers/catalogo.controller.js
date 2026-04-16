@@ -8,9 +8,9 @@ exports.listarProductos = async (req, res) => {
     const { categoria, marca, search, limit = 50, page = 1 } = req.query;
     const where = { estado: true };
 
-    // Si es ADMIN, mostrar todos los productos activos
-    // Si no es ADMIN, solo productos sin proveedor (de la tienda)
-    if (req.user?.rol !== 'ADMIN') {
+    // Si es ADMIN o ADMINISTRADOR, mostrar todos los productos activos
+    // Si no es ADMIN/ADMINISTRADOR, solo productos sin proveedor (de la tienda)
+    if (req.user?.rol !== 'ADMIN' && req.user?.rol !== 'ADMINISTRADOR') {
       where.proveedorId = null;
     }
 
@@ -158,8 +158,8 @@ exports.crearProducto = async (req, res) => {
   try {
     const usuario = await Usuario.findByPk(req.user.documento);
 
-    // ADMIN puede crear sin proveedor, PROVEEDOR necesita tener proveedor asociado
-    if (req.user.rol !== 'ADMIN' && (!usuario.proveedorId)) {
+    // ADMIN/ADMINISTRADOR puede crear sin proveedor, PROVEEDOR necesita tener proveedor asociado
+    if (req.user.rol !== 'ADMIN' && req.user.rol !== 'ADMINISTRADOR' && (!usuario.proveedorId)) {
       return errorResponse(res, 'No tienes un proveedor asociado', 403);
     }
 
@@ -187,8 +187,8 @@ exports.actualizarProducto = async (req, res) => {
       return errorResponse(res, 'Producto no encontrado', 404);
     }
 
-    // ADMIN puede editar cualquier producto, PROVEEDOR solo los suyos
-    if (req.user.rol !== 'ADMIN') {
+    // ADMIN/ADMINISTRADOR puede editar cualquier producto, PROVEEDOR solo los suyos
+    if (req.user.rol !== 'ADMIN' && req.user.rol !== 'ADMINISTRADOR') {
       if (!usuario.proveedorId || producto.proveedorId !== usuario.proveedorId) {
         return errorResponse(res, 'No tienes permiso para editar este producto', 403);
       }
@@ -211,8 +211,8 @@ exports.eliminarProducto = async (req, res) => {
       return errorResponse(res, 'Producto no encontrado', 404);
     }
 
-    // Solo ADMIN puede eliminar
-    if (req.user.rol !== 'ADMIN') {
+    // Solo ADMIN/ADMINISTRADOR puede eliminar
+    if (req.user.rol !== 'ADMIN' && req.user.rol !== 'ADMINISTRADOR') {
       return errorResponse(res, 'No tienes permiso para eliminar productos', 403);
     }
 
@@ -363,8 +363,8 @@ exports.eliminar = async (req, res) => {
       return errorResponse(res, 'Ítem no encontrado', 404);
     }
 
-    // Solo ADMIN puede eliminar
-    if (req.user.rol !== 'ADMIN') {
+    // Solo ADMIN/ADMINISTRADOR puede eliminar
+    if (req.user.rol !== 'ADMIN' && req.user.rol !== 'ADMINISTRADOR') {
       return errorResponse(res, 'No tienes permiso para eliminar ítems', 403);
     }
 
