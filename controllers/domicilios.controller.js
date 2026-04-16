@@ -25,7 +25,7 @@ exports.crear = async (req, res) => {
   const t = await sequelize.transaction();
   try {
     const { pedidoId, direccion, tarifa, repartidor, telefono_repartidor, ciudad, barrio, telefono } = req.body;
-    
+
     const pedidoData = await Pedido.findByPk(pedidoId, { transaction: t });
     if (!pedidoData) {
       await t.rollback();
@@ -34,6 +34,11 @@ exports.crear = async (req, res) => {
     if (pedidoData.tipoVenta !== 'domicilio') {
       await t.rollback();
       return errorResponse(res, 'El pedido no es de tipo domicilio', 400);
+    }
+    // Only allow domicilio creation for approved or further states
+    if (pedidoData.estadoPedido === 'Pendiente') {
+      await t.rollback();
+      return errorResponse(res, 'No se puede crear domicilio: el pedido debe estar aprobado', 400);
     }
 
     let repartidorData = null;
@@ -82,18 +87,18 @@ exports.crear = async (req, res) => {
 
     const nuevoTotal = parseFloat(pedidoData.total) + tarifaAplicada;
     const nuevoEstado = (repartidorData && repartidorData.nombre) ? 'asignado' : 'Pendiente';
-    
+
     await Pedido.update({
       total: nuevoTotal,
       estadoPedido: nuevoEstado
     }, { where: { id: pedidoId }, transaction: t });
 
     await t.commit();
-    
+
     const domicilioPopulado = await Domicilio.findByPk(nuevoDomicilio.id, {
       include: [{ model: Pedido, as: 'pedido' }]
     });
-    
+
     return successResponse(res, domicilioPopulado, 'Domicilio creado', 201);
   } catch (error) {
     await t.rollback();
@@ -127,6 +132,14 @@ exports.cambiarEstado = async (req, res) => {
     }
 
     const pedido = domicilio.pedido;
+    if (!pedido) {
+      await t.rollback();
+      return errorResponse(res, 'Pedido asociado no encontrado', 404);
+    }
+    if ((pedido.estadoPedido || '').toString().toLowerCase() === 'pendiente') {
+      await t.rollback();
+      return errorResponse(res, 'No se puede cambiar estado de domicilio: el pedido está en estado Pendiente', 400);
+    }
     
     // Si el domicilio ya está entregado y el pedido no se convirtió, intentar convertir
     if (domicilio.estado === 'entregado' && pedido && !pedido.esVenta && (forzar === true || estado === 'entregado')) {
@@ -152,16 +165,26 @@ exports.cambiarEstado = async (req, res) => {
         await actualizarTotalPagado(pedido.id, { transaction: t });
       }
       // Deduct stock upon delivery
-      const productos = pedidoActualizado.productos || [];
+      let productos = pedidoActualizado.productos;
+      if (!Array.isArray(productos)) {
+        console.warn('[stock deduction] pedido', pedidoActualizado.id, 'productos no es un array, usando array vacío');
+        productos = [];
+      }
+      console.log('[stock] Deducting stock for pedido', pedidoActualizado.id, 'items:', productos.length);
       for (const item of productos) {
-        const producto = await Producto.findByPk(item.producto, { transaction: t });
+        const productoId = item.producto;
+        const cantidad = item.cantidad;
+        const producto = await Producto.findByPk(productoId, { transaction: t });
         if (producto) {
-          const nuevoStock = producto.stock - item.cantidad;
+          const nuevoStock = producto.stock - cantidad;
           if (nuevoStock < 0) {
             await t.rollback();
             return errorResponse(res, `Stock insuficiente para producto ${producto.nombre}`, 400);
           }
           await producto.update({ stock: nuevoStock }, { transaction: t });
+          console.log('[stock] pedido', pedidoActualizado.id, 'producto', productoId, 'cantidad', cantidad, 'prev_stock', producto.stock, 'new_stock', nuevoStock);
+        } else {
+          console.warn('[stock] pedido', pedidoActualizado.id, 'producto no encontrado:', productoId);
         }
       }
       await t.commit();
@@ -238,16 +261,26 @@ exports.cambiarEstado = async (req, res) => {
 
     // Deduct stock when delivery is marked as delivered
     if (estado === 'entregado') {
-      const productos = pedido.productos || [];
+      let productos = pedido.productos;
+      if (!Array.isArray(productos)) {
+        console.warn('[stock deduction] pedido', pedido.id, 'productos no es un array, usando array vacío');
+        productos = [];
+      }
+      console.log('[stock] Deducting stock for pedido', pedido.id, 'items:', productos.length);
       for (const item of productos) {
-        const producto = await Producto.findByPk(item.producto, { transaction: t });
+        const productoId = item.producto;
+        const cantidad = item.cantidad;
+        const producto = await Producto.findByPk(productoId, { transaction: t });
         if (producto) {
-          const nuevoStock = producto.stock - item.cantidad;
+          const nuevoStock = producto.stock - cantidad;
           if (nuevoStock < 0) {
             await t.rollback();
             return errorResponse(res, `Stock insuficiente para producto ${producto.nombre}`, 400);
           }
           await producto.update({ stock: nuevoStock }, { transaction: t });
+          console.log('[stock] pedido', pedido.id, 'producto', productoId, 'cantidad', cantidad, 'prev_stock', producto.stock, 'new_stock', nuevoStock);
+        } else {
+          console.warn('[stock] pedido', pedido.id, 'producto no encontrado:', productoId);
         }
       }
     }
@@ -289,6 +322,22 @@ exports.asignarRepartidor = async (req, res) => {
     if (!domicilio) {
       await t.rollback();
       return errorResponse(res, 'Domicilio no encontrado', 404);
+    }
+
+    // Validate pedido state before allowing assignment
+    const pedido = await Pedido.findByPk(domicilio.pedidoId, { transaction: t });
+    if (!pedido) {
+      await t.rollback();
+      return errorResponse(res, 'Pedido asociado no encontrado', 404);
+    }
+    const estadoPedido = (pedido.estadoPedido || '').toString().toLowerCase();
+    if (estadoPedido === 'pendiente') {
+      await t.rollback();
+      return errorResponse(res, 'No se puede asignar repartidor a un pedido en estado Pendiente', 400);
+    }
+    if (['entregado', 'cancelado', 'anulado'].includes(estadoPedido)) {
+      await t.rollback();
+      return errorResponse(res, `No se puede asignar repartidor a un pedido en estado ${pedido.estadoPedido}`, 400);
     }
 
     let repartidorObj = { nombre: '', telefono: '', tipoVehiculo: '', placa: '' };
@@ -556,6 +605,26 @@ exports.cambiarEstadoRepartidor = async (req, res) => {
     if (!domicilio) {
       await t.rollback();
       return errorResponse(res, 'Domicilio no encontrado', 404);
+     }
++    
++    const pedido = domicilio.pedido;
++    if (!pedido) {
++      await t.rollback();
++      return errorResponse(res, 'Pedido asociado no encontrado', 404);
++    }
++    if ((pedido.estadoPedido || '').toString().toLowerCase() === 'pendiente') {
++      await t.rollback();
++      return errorResponse(res, 'No se puede cambiar estado de domicilio: el pedido está en estado Pendiente', 400);
++    }
++    
++    const pedido = domicilio.pedido;
+    if (!pedido) {
+      await t.rollback();
+      return errorResponse(res, 'Pedido asociado no encontrado', 404);
+    }
+    if ((pedido.estadoPedido || '').toString().toLowerCase() === 'pendiente') {
+      await t.rollback();
+      return errorResponse(res, 'No se puede cambiar estado de domicilio: el pedido está en estado Pendiente', 400);
     }
 
     // Verificar que el repartidor es el asignado a este domicilio
@@ -634,16 +703,26 @@ exports.cambiarEstadoRepartidor = async (req, res) => {
 
     // Deduct stock when delivery is marked as delivered
     if (estado === 'entregado') {
-      const productos = pedido.productos || [];
+      let productos = pedido.productos;
+      if (!Array.isArray(productos)) {
+        console.warn('[stock deduction] pedido', pedido.id, 'productos no es un array, usando array vacío');
+        productos = [];
+      }
+      console.log('[stock] Deducting stock for pedido', pedido.id, 'items:', productos.length);
       for (const item of productos) {
-        const producto = await Producto.findByPk(item.producto, { transaction: t });
+        const productoId = item.producto;
+        const cantidad = item.cantidad;
+        const producto = await Producto.findByPk(productoId, { transaction: t });
         if (producto) {
-          const nuevoStock = producto.stock - item.cantidad;
+          const nuevoStock = producto.stock - cantidad;
           if (nuevoStock < 0) {
             await t.rollback();
             return errorResponse(res, `Stock insuficiente para producto ${producto.nombre}`, 400);
           }
           await producto.update({ stock: nuevoStock }, { transaction: t });
+          console.log('[stock] pedido', pedido.id, 'producto', productoId, 'cantidad', cantidad, 'prev_stock', producto.stock, 'new_stock', nuevoStock);
+        } else {
+          console.warn('[stock] pedido', pedido.id, 'producto no encontrado:', productoId);
         }
       }
     }

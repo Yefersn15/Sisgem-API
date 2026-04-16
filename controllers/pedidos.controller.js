@@ -260,6 +260,18 @@ exports.aprobarAbono = async (req, res) => {
       return errorResponse(res, 'El pedido ya fue procesado', 400);
     }
 
+    // Check if domicilio already exists to avoid duplicate creation
+    if (pedido.tipoVenta === 'domicilio') {
+      const domicilioExistente = await Domicilio.findOne({
+        where: { pedidoId: pedido.id },
+        transaction: t
+      });
+      if (domicilioExistente) {
+        await t.rollback();
+        return errorResponse(res, 'Ya existe un domicilio para este pedido', 400);
+      }
+    }
+
     await pedido.update({ estadoPedido: 'aprobado' }, { transaction: t });
 
     if (pedido.tipoVenta === 'domicilio') {
@@ -273,7 +285,7 @@ exports.aprobarAbono = async (req, res) => {
         telefono: direccion?.telefono || pedido.telefonoContacto,
         estado: 'Pendiente',
         costo: 0,
-        tarifa_aplicada: 0,
+        tarifaAplicada: 0,
         datos_front: direccion
       }, { transaction: t });
     }
