@@ -15,20 +15,20 @@ const sequelize = require(path.join(__dirname, '..', 'config', 'database'));
       HAVING COUNT(*) > 1
     `, { type: sequelize.QueryTypes.SELECT });
 
-    if (duplicates.length === 0) {
-      console.log('✅ No duplicate domicilios found for any pedido');
+    const dupArray = Array.isArray(duplicates) ? duplicates : [];
+    if (dupArray.length === 0) {
+      console.log('✅ No duplicate domicilio found for any pedido');
     } else {
-      console.log(`⚠️ Found ${duplicates.length} pedido(s) with duplicate domicilios. Cleaning up...`);
-      for (const row of duplicates) {
+      console.log(`⚠️ Found ${dupArray.length} pedido(s) with duplicate domicilio. Cleaning up...`);
+      for (const row of dupArray) {
         const pedidoId = row.pedido_id;
-        // Get all domicilios for this pedido, keep the newest (max id)
         const [domicilios] = await sequelize.query(
           `SELECT id FROM domicilios WHERE pedido_id = $1 ORDER BY id DESC`,
           { replacements: [pedidoId], type: sequelize.QueryTypes.SELECT }
         );
-        if (domicilios.length > 1) {
-          // keep the first (newest), delete the rest
-          const idsToDelete = domicilios.slice(1).map(d => d.id);
+        const domArray = Array.isArray(domicilios) ? domicilios : [];
+        if (domArray.length > 1) {
+          const idsToDelete = domArray.slice(1).map(d => d.id);
           await sequelize.query(
             `DELETE FROM domicilios WHERE id = ANY($1::int[])`,
             { replacements: [idsToDelete] }
