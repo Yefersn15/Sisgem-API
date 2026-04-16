@@ -399,8 +399,8 @@ exports.asignarRepartidor = async (req, res) => {
       await Domicilio.update({ estado: 'asignado' }, { where: { id: domicilio.id }, transaction: t });
     }
 
-    const pedido = await Pedido.findByPk(domicilio.pedidoId, { transaction: t });
-    if ( pedido && ['Pendiente', 'aprobado'].includes(pedido.estadoPedido)) {
+    const pedido2 = await Pedido.findByPk(domicilio.pedidoId, { transaction: t });
+    if ( pedido2 && ['Pendiente', 'aprobado'].includes(pedido2.estadoPedido)) {
       await Pedido.update({ estadoPedido: 'asignado' }, { where: { id: domicilio.pedidoId }, transaction: t });
     }
 
