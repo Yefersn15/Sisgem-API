@@ -11,7 +11,7 @@ async function startServer() {
   try {
     await sequelize.authenticate();
     console.log('✅ Conexión a PostgreSQL establecida');
-    
+
     // Intentar sincronizar modelos
     try {
       await sequelize.sync({ alter: true });
@@ -20,13 +20,14 @@ async function startServer() {
       console.log('⚠️ Error al sincronizar tablas:', syncError.message);
       console.log('Las tablas pueden necesitar recreate manual');
     }
-    
-    app.listen(PORT, () => {
-      console.log(`🚀 Servidor corriendo en puerto ${PORT}`);
-    });
   } catch (error) {
-    console.error('❌ Error al iniciar el servidor:', error);
+    console.warn('⚠️ No se pudo conectar a PostgreSQL:', error.message);
+    console.log('⚠️ El servidor continuará arrancando aunque la base de datos no esté disponible');
   }
+
+  app.listen(PORT, () => {
+    console.log(`🚀 Servidor corriendo en puerto ${PORT}`);
+  });
 }
 
 startServer();
