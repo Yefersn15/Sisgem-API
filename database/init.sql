@@ -182,6 +182,66 @@ CREATE TABLE IF NOT EXISTS catalogo (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
+INSERT INTO roles (nombre, descripcion, permisos, es_default, estado)
+VALUES (
+  'ADMIN',
+  'Administrador del sistema con acceso total',
+  '[
+    "ventas.read","ventas.write","ventas.delete",
+    "pedidos.read","pedidos.write","pedidos.delete",
+    "pagos.read","pagos.write","pagos.delete",
+    "domicilios.read","domicilios.write","domicilios.delete",
+    "productos.read","productos.write","productos.delete",
+    "categorias.read","categorias.write","categorias.delete",
+    "marcas.read","marcas.write","marcas.delete",
+    "proveedores.read","proveedores.write","proveedores.delete",
+    "usuarios.read","usuarios.write","usuarios.delete",
+    "roles.read","roles.write","roles.delete",
+    "config.read","config.write",
+    "reportes.read"
+  ]'::jsonb,
+  FALSE,
+  TRUE
+) ON CONFLICT (nombre) DO NOTHING;
+
+INSERT INTO usuarios (
+  documento,
+  tipo_documento,
+  nombre,
+  apellido,
+  email,
+  password,
+  telefono,
+  genero,
+  direccion,
+  barrio,
+  estado,
+  rol_id
+)
+SELECT
+  '1000000000',
+  'CC',
+  'Admin',
+  'Sistema',
+  'admin@sisgem.com',
+  '$2b$10$ECG7ojgeLewFUzfYSxTtvOtLsOzz68VLGV9WYXvDLHzNjAOjSed4u',
+  '3000000000',
+  'Otro',
+  'Sede principal',
+  'Principal',
+  TRUE,
+  r.id
+FROM roles r
+WHERE r.nombre = 'ADMIN'
+  AND NOT EXISTS (
+    SELECT 1 FROM usuarios u WHERE u.email = 'admin@sisgem.com'
+  );
+
+UPDATE usuarios
+SET rol_id = (SELECT id FROM roles WHERE nombre = 'ADMIN')
+WHERE email = 'admin@sisgem.com'
+  AND rol_id IS DISTINCT FROM (SELECT id FROM roles WHERE nombre = 'ADMIN');
+
 CREATE INDEX IF NOT EXISTS idx_marcas_proveedor_id ON marcas(proveedor_id);
 CREATE INDEX IF NOT EXISTS idx_productos_categoria_id ON productos(categoria_id);
 CREATE INDEX IF NOT EXISTS idx_productos_marca_id ON productos(marca_id);
