@@ -8,6 +8,7 @@ const upload = multer({
 const uploadController = require('../controllers/upload.controller');
 const { verifyToken, checkRole } = require('../middlewares/auth');
 
+router.get('/', verifyToken, checkRole(['ADMIN']), uploadController.listarImagenes);
 router.post('/', verifyToken, checkRole(['ADMIN']), upload.single('imagen'), uploadController.subirImagen);
 router.delete('/', verifyToken, checkRole(['ADMIN']), uploadController.eliminarImagen);
 

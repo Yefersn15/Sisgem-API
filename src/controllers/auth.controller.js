@@ -1,6 +1,9 @@
 const { Usuario, Rol, Proveedor } = require('../models');
 const jwt = require('jsonwebtoken');
 const { successResponse, errorResponse } = require('../utils/helpers');
+const { sendMail } = require('../config/mailer');
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 exports.register = async (req, res) => {
   try {
@@ -187,25 +190,47 @@ exports.changePassword = async (req, res) => {
 };
 
 exports.forgotPassword = async (req, res) => {
+  // Mensaje idéntico sin importar si la cuenta existe o no, para no permitir
+  // que alguien use este endpoint para averiguar qué correos están registrados.
+  const genericMessage = 'Si el correo está registrado, se ha enviado un enlace de recuperación a esa dirección';
+
   try {
     const { email } = req.body;
-    
-    if (!email) {
-      return errorResponse(res, 'El email es requerido', 400);
+
+    if (!email || !EMAIL_REGEX.test(email)) {
+      return errorResponse(res, 'Ingresa un email válido', 400);
     }
-    
+
     const usuario = await Usuario.findOne({ where: { email } });
-    if (!usuario) {
-      return successResponse(res, null, 'Si el email existe, recibirás un enlace para restablecer tu contraseña');
+
+    if (usuario) {
+      const resetToken = jwt.sign(
+        { documento: usuario.documento, type: 'password-reset' },
+        process.env.JWT_SECRET,
+        { expiresIn: '1h' }
+      );
+
+      const frontendUrl = (process.env.FRONTEND_URL || 'http://localhost:5173').replace(/\/$/, '');
+      const resetLink = `${frontendUrl}/reset-password?token=${resetToken}`;
+
+      try {
+        await sendMail({
+          to: usuario.email,
+          subject: 'Recuperación de contraseña - SISGEM',
+          html: `
+            <p>Hola ${usuario.nombre || ''},</p>
+            <p>Recibimos una solicitud para restablecer la contraseña de tu cuenta en SISGEM.</p>
+            <p><a href="${resetLink}">Haz clic aquí para crear una nueva contraseña</a></p>
+            <p>Este enlace expira en 1 hora. Si tú no solicitaste este cambio, puedes ignorar este correo; tu contraseña seguirá siendo la misma.</p>
+          `,
+        });
+      } catch (mailError) {
+        // No se expone el error de envío al cliente: la respuesta sigue siendo genérica.
+        console.error('Error enviando email de recuperación:', mailError);
+      }
     }
-    
-    const resetToken = jwt.sign(
-      { documento: usuario.documento, type: 'password-reset' },
-      process.env.JWT_SECRET,
-      { expiresIn: '1h' }
-    );
-    
-    return successResponse(res, { resetToken }, 'Si el email existe, recibirás un enlace para restablecer tu contraseña');
+
+    return successResponse(res, null, genericMessage);
   } catch (error) {
     console.error(error);
     return errorResponse(res, error.message);

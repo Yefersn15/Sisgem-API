@@ -2,17 +2,32 @@ const cloudinary = require('../config/cloudinary');
 const { successResponse, errorResponse } = require('../utils/helpers');
 
 const FOLDER_PATTERN = /^[a-z0-9_-]+$/i;
+const DEFAULT_MAX_WIDTH = 1600;
+const MIN_MAX_WIDTH = 200;
+const MAX_MAX_WIDTH = 2000;
 
-const streamUpload = (buffer, folder) => {
+const resolveMaxWidth = (value) => {
+  const parsed = parseInt(value, 10);
+  if (isNaN(parsed)) return DEFAULT_MAX_WIDTH;
+  return Math.min(MAX_MAX_WIDTH, Math.max(MIN_MAX_WIDTH, parsed));
+};
+
+const resolveFolder = (value) => {
+  const folderInput = (value || 'general').trim();
+  return FOLDER_PATTERN.test(folderInput) ? folderInput : 'general';
+};
+
+const streamUpload = (buffer, folder, maxWidth) => {
   return new Promise((resolve, reject) => {
     const stream = cloudinary.uploader.upload_stream(
       {
         folder: `sisgem/${folder}`,
         resource_type: 'image',
-        // Limita el ancho máximo y sirve el formato/calidad más liviano soportado
-        // por el navegador (WebP/AVIF cuando aplica) para optimizar espacio.
+        // Limita el ancho máximo (según dónde se vaya a mostrar) y sirve el
+        // formato/calidad más liviano soportado por el navegador (WebP/AVIF
+        // cuando aplica) para optimizar espacio.
         transformation: [
-          { width: 1600, crop: 'limit' },
+          { width: maxWidth, crop: 'limit' },
           { quality: 'auto', fetch_format: 'auto' }
         ]
       },
@@ -34,10 +49,10 @@ exports.subirImagen = async (req, res) => {
       return errorResponse(res, 'El archivo debe ser una imagen', 400);
     }
 
-    const folderInput = (req.body.folder || 'general').trim();
-    const folder = FOLDER_PATTERN.test(folderInput) ? folderInput : 'general';
+    const folder = resolveFolder(req.body.folder);
+    const maxWidth = resolveMaxWidth(req.body.maxWidth);
 
-    const result = await streamUpload(req.file.buffer, folder);
+    const result = await streamUpload(req.file.buffer, folder, maxWidth);
 
     return successResponse(res, {
       url: result.secure_url,
@@ -46,6 +61,35 @@ exports.subirImagen = async (req, res) => {
   } catch (error) {
     console.error('Error subiendo imagen a Cloudinary:', error);
     return errorResponse(res, error.message || 'Error al subir la imagen');
+  }
+};
+
+exports.listarImagenes = async (req, res) => {
+  try {
+    const folder = resolveFolder(req.query.folder);
+
+    const result = await cloudinary.api.resources({
+      type: 'upload',
+      resource_type: 'image',
+      prefix: `sisgem/${folder}/`,
+      max_results: 100
+    });
+
+    const imagenes = (result.resources || [])
+      .map(r => ({
+        publicId: r.public_id,
+        url: r.secure_url,
+        width: r.width,
+        height: r.height,
+        bytes: r.bytes,
+        createdAt: r.created_at
+      }))
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+    return successResponse(res, imagenes);
+  } catch (error) {
+    console.error('Error listando imágenes de Cloudinary:', error);
+    return errorResponse(res, error.message || 'Error al listar imágenes');
   }
 };
 
