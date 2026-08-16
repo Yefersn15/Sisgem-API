@@ -53,11 +53,6 @@ const Producto = sequelize.define('Producto', {
     allowNull: true,
     field: 'marca_id'
   },
-  proveedorId: {
-    type: DataTypes.INTEGER,
-    allowNull: true,
-    field: 'proveedor_id'
-  },
   estado: {
     type: DataTypes.BOOLEAN,
     defaultValue: true

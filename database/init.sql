@@ -12,20 +12,6 @@ CREATE TABLE IF NOT EXISTS roles (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE IF NOT EXISTS proveedores (
-  id SERIAL PRIMARY KEY,
-  nit VARCHAR(20) NOT NULL UNIQUE,
-  nombre VARCHAR(150) NOT NULL,
-  telefono VARCHAR(20),
-  email VARCHAR(100),
-  direccion VARCHAR(255),
-  ciudad VARCHAR(100),
-  logo TEXT,
-  estado BOOLEAN DEFAULT TRUE,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
-
 CREATE TABLE IF NOT EXISTS categorias (
   id SERIAL PRIMARY KEY,
   nombre VARCHAR(100) NOT NULL UNIQUE,
@@ -41,7 +27,6 @@ CREATE TABLE IF NOT EXISTS marcas (
   descripcion TEXT,
   logo TEXT,
   sitio_web VARCHAR(255),
-  proveedor_id INTEGER REFERENCES proveedores(id) ON DELETE SET NULL,
   estado BOOLEAN DEFAULT TRUE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
@@ -62,7 +47,6 @@ CREATE TABLE IF NOT EXISTS usuarios (
   foto_url TEXT,
   direcciones JSONB DEFAULT '[]'::jsonb,
   rol_id INTEGER REFERENCES roles(id) ON DELETE SET NULL,
-  proveedor_id INTEGER REFERENCES proveedores(id) ON DELETE SET NULL,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
@@ -79,7 +63,6 @@ CREATE TABLE IF NOT EXISTS productos (
   precio_compra NUMERIC(12,2),
   categoria_id INTEGER REFERENCES categorias(id) ON DELETE SET NULL,
   marca_id INTEGER REFERENCES marcas(id) ON DELETE SET NULL,
-  proveedor_id INTEGER REFERENCES proveedores(id) ON DELETE SET NULL,
   estado BOOLEAN DEFAULT TRUE,
   activo BOOLEAN DEFAULT TRUE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
@@ -139,20 +122,6 @@ CREATE TABLE IF NOT EXISTS domicilios (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE IF NOT EXISTS ordenes_compra (
-  id SERIAL PRIMARY KEY,
-  proveedor_id INTEGER NOT NULL REFERENCES proveedores(id) ON DELETE RESTRICT,
-  usuario_id VARCHAR(20) NOT NULL REFERENCES usuarios(documento) ON DELETE RESTRICT,
-  estado VARCHAR(50) DEFAULT 'Pendiente',
-  subtotal NUMERIC(12,2) DEFAULT 0,
-  impuesto NUMERIC(12,2) DEFAULT 0,
-  total NUMERIC(12,2) DEFAULT 0,
-  notas TEXT,
-  productos JSONB DEFAULT '[]'::jsonb,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
-
 CREATE TABLE IF NOT EXISTS banners (
   id SERIAL PRIMARY KEY,
   layout VARCHAR(30) NOT NULL DEFAULT 'single',
@@ -162,20 +131,6 @@ CREATE TABLE IF NOT EXISTS banners (
   text_position VARCHAR(10) NOT NULL DEFAULT 'none',
   display_order INTEGER DEFAULT 0,
   estado BOOLEAN DEFAULT TRUE,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE IF NOT EXISTS catalogo (
-  id SERIAL PRIMARY KEY,
-  proveedor_id INTEGER NOT NULL REFERENCES proveedores(id) ON DELETE CASCADE,
-  nombre VARCHAR(200) NOT NULL,
-  descripcion TEXT,
-  precio_sugerido NUMERIC(12,2) DEFAULT 0,
-  imagen TEXT,
-  categoria_nombre VARCHAR(100),
-  marca_nombre VARCHAR(100),
-  estado_stock VARCHAR(50) DEFAULT 'Disponible',
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
@@ -192,7 +147,6 @@ VALUES (
     "productos.read","productos.write","productos.delete",
     "categorias.read","categorias.write","categorias.delete",
     "marcas.read","marcas.write","marcas.delete",
-    "proveedores.read","proveedores.write","proveedores.delete",
     "usuarios.read","usuarios.write","usuarios.delete",
     "roles.read","roles.write","roles.delete",
     "config.read","config.write",
@@ -240,14 +194,8 @@ SET rol_id = (SELECT id FROM roles WHERE nombre = 'ADMIN')
 WHERE email = 'admin@sisgem.com'
   AND rol_id IS DISTINCT FROM (SELECT id FROM roles WHERE nombre = 'ADMIN');
 
-CREATE INDEX IF NOT EXISTS idx_marcas_proveedor_id ON marcas(proveedor_id);
 CREATE INDEX IF NOT EXISTS idx_productos_categoria_id ON productos(categoria_id);
 CREATE INDEX IF NOT EXISTS idx_productos_marca_id ON productos(marca_id);
-CREATE INDEX IF NOT EXISTS idx_productos_proveedor_id ON productos(proveedor_id);
 CREATE INDEX IF NOT EXISTS idx_usuarios_rol_id ON usuarios(rol_id);
-CREATE INDEX IF NOT EXISTS idx_usuarios_proveedor_id ON usuarios(proveedor_id);
 CREATE INDEX IF NOT EXISTS idx_pedidos_usuario_id ON pedidos(usuario_id);
 CREATE INDEX IF NOT EXISTS idx_pagos_pedido_id ON pagos(pedido_id);
-CREATE INDEX IF NOT EXISTS idx_ordenes_compra_proveedor_id ON ordenes_compra(proveedor_id);
-CREATE INDEX IF NOT EXISTS idx_ordenes_compra_usuario_id ON ordenes_compra(usuario_id);
-CREATE INDEX IF NOT EXISTS idx_catalogo_proveedor_id ON catalogo(proveedor_id);

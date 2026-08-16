@@ -1,6 +1,6 @@
 # SISGEM API
 
-Backend REST de SISGEM (Sistema de Gestión Comercial): una API para una tienda con catálogo de productos, carrito de compras, pedidos/ventas, pagos y abonos, domicilios, gestión de proveedores con órdenes de compra, y panel administrativo con roles y permisos.
+Backend REST de SISGEM (Sistema de Gestión Comercial): una API para una tienda con catálogo de productos, carrito de compras, pedidos/ventas, pagos y abonos, domicilios, y panel administrativo con roles y permisos.
 
 ## Stack tecnológico
 
@@ -119,31 +119,28 @@ Definidas en `src/models/` con Sequelize (nombres de tabla en snake_case vía `u
 
 | Entidad | Descripción |
 |---|---|
-| `Usuario` | Clientes, administradores y proveedores del sistema. Clave primaria `documento`. Password hasheado con bcrypt (hooks `beforeCreate`/`beforeUpdate`). Guarda `direcciones` (JSONB) y referencias a `Rol` y `Proveedor`. |
+| `Usuario` | Clientes y administradores del sistema. Clave primaria `documento`. Password hasheado con bcrypt (hooks `beforeCreate`/`beforeUpdate`). Guarda `direcciones` (JSONB) y referencia a `Rol`. |
 | `Rol` | Nombre, descripción, `permisos` (arreglo JSONB de strings tipo `"productos.write"`), y flags `esDefault`/`estado`. |
 | `Categoria` | Categorías de productos (nombre único). |
-| `Marca` | Marcas de producto, asociadas opcionalmente a un `Proveedor`. |
-| `Proveedor` | Empresas/personas que surten productos (NIT único, contacto, logo). |
-| `Producto` | Catálogo de productos de la tienda: precio, stock, stock mínimo, precio de compra, imagen, y relaciones a `Categoria`, `Marca` y `Proveedor`. |
-| `Catalogo` | Ítems que un proveedor ofrece (con precio sugerido), separados de los productos ya registrados en tienda. |
+| `Marca` | Marcas de producto. |
+| `Producto` | Catálogo de productos de la tienda: precio, stock, stock mínimo, precio de compra, imagen, y relaciones a `Categoria` y `Marca`. |
 | `Pedido` | Pedido/venta de un cliente: productos (JSONB), subtotal/total/total pagado, `estadoPedido`, `estadoVenta`, `esVenta`, `tipoVenta` (mostrador/domicilio), dirección de entrega. |
 | `Pago` | Pagos/abonos asociados a un `Pedido`: monto, método, estado, tipo (`pago_total`/abono), comprobante. |
 | `Domicilio` | Entrega a domicilio asociada 1 a 1 a un `Pedido` (índice único `pedido_id`), con repartidor, dirección, costo/tarifa y estado. |
-| `OrdenCompra` | Orden de compra hacia un `Proveedor`, generada por un `Usuario` (admin), con productos (JSONB), subtotal/impuesto/total y estado. |
 | `Banner` | Banners promocionales del home, con layout tipo collage (`single`, `duo`, `trio`, `grid-4`, `grid-6`, `mosaic-8`), imágenes por slot (JSONB) y posición de texto. |
 
-Relaciones principales: `Proveedor` 1—N `Marca`/`Producto`/`Usuario`/`OrdenCompra`/`Catalogo`; `Categoria`/`Marca` 1—N `Producto`; `Rol` 1—N `Usuario`; `Usuario` 1—N `Pedido`/`OrdenCompra`; `Pedido` 1—N `Pago` y 1—1 `Domicilio`.
+Relaciones principales: `Categoria`/`Marca` 1—N `Producto`; `Rol` 1—N `Usuario`; `Usuario` 1—N `Pedido`; `Pedido` 1—N `Pago` y 1—1 `Domicilio`.
 
 ## Autenticación y permisos
 
-- **JWT**: al hacer login (`POST /api/auth/login`) se firma un token con `{ documento, rol, nombre, proveedor? }` usando `JWT_SECRET`, con expiración `JWT_EXPIRES_IN`. Las rutas protegidas requieren el header `Authorization: Bearer <token>`.
+- **JWT**: al hacer login (`POST /api/auth/login`) se firma un token con `{ documento, rol, nombre }` usando `JWT_SECRET`, con expiración `JWT_EXPIRES_IN`. Las rutas protegidas requieren el header `Authorization: Bearer <token>`.
 - **`verifyToken`**: valida el token y adjunta el payload en `req.user`.
 - **`checkRole(roles)`**: exige que `req.user.rol` esté en la lista de roles permitida. Los roles `ADMIN`/`ADMINISTRADOR` siempre tienen acceso, sin importar la lista.
 - **`checkPermission(permiso)`**: busca al usuario en base de datos junto a su `Rol` y verifica que el arreglo `permisos` del rol contenga el permiso solicitado (por ejemplo `domicilios.write`). Los roles `ADMIN`/`ADMINISTRADOR` siempre pasan.
 - **`checkRoleOrPermission(roles, permiso)`**: permite el acceso si el rol del usuario está en la lista o si su rol tiene el permiso indicado.
 - **`allowSelfOrAdmin`**: permite la acción si el usuario autenticado es `ADMIN` o si el recurso (`:id` en la URL) pertenece al propio usuario (comparando `documento`).
 
-El rol `ADMIN` que crea `src/server.js` al arrancar incluye permisos sobre los módulos: `ventas`, `pedidos`, `pagos`, `domicilios`, `productos`, `categorias`, `marcas`, `proveedores`, `usuarios`, `roles`, `config` y `reportes` (lectura/escritura/eliminación según el módulo).
+El rol `ADMIN` que crea `src/server.js` al arrancar incluye permisos sobre los módulos: `ventas`, `pedidos`, `pagos`, `domicilios`, `productos`, `categorias`, `marcas`, `usuarios`, `roles`, `config` y `reportes` (lectura/escritura/eliminación según el módulo).
 
 ## Endpoints de la API
 
@@ -210,19 +207,8 @@ Prefijo base: `http://localhost:<PORT>/api`. "Acceso" indica el middleware aplic
 |---|---|---|
 | GET | `/` | Público |
 | GET | `/export` | Público (Excel) |
-| POST | `/` | ADMIN, PROVEEDOR |
-| POST | `/import` | ADMIN (Excel, campo `file`) |
-| GET | `/:id` | ADMIN |
-| PUT | `/:id` | ADMIN, PROVEEDOR |
-| DELETE | `/:id` | ADMIN |
-| PATCH | `/:id/estado` | ADMIN |
-
-### Proveedores — `/proveedores`
-
-| Método | Ruta | Acceso |
-|---|---|---|
-| GET | `/` | Público |
 | POST | `/` | ADMIN |
+| POST | `/import` | ADMIN (Excel, campo `file`) |
 | GET | `/:id` | ADMIN |
 | PUT | `/:id` | ADMIN |
 | DELETE | `/:id` | ADMIN |
@@ -234,11 +220,11 @@ Prefijo base: `http://localhost:<PORT>/api`. "Acceso" indica el middleware aplic
 |---|---|---|
 | GET | `/` | Público |
 | GET | `/stock-bajo` | ADMIN |
-| POST | `/` | ADMIN, PROVEEDOR |
+| POST | `/` | ADMIN |
 | POST | `/import` | ADMIN (Excel, campo `file`) |
 | GET | `/export` | ADMIN (Excel) |
 | GET | `/:id` | Autenticado |
-| PUT | `/:id` | ADMIN, PROVEEDOR |
+| PUT | `/:id` | ADMIN |
 | PATCH | `/:id/estado` | ADMIN |
 | DELETE | `/:id` | ADMIN |
 
@@ -313,19 +299,6 @@ Prefijo base: `http://localhost:<PORT>/api`. "Acceso" indica el middleware aplic
 | PUT | `/:id` | ADMIN |
 | DELETE | `/:id` | ADMIN |
 
-### Órdenes de compra — `/ordenes-compra`
-
-| Método | Ruta | Acceso |
-|---|---|---|
-| GET | `/` | ADMIN |
-| POST | `/` | ADMIN |
-| GET | `/:id` | ADMIN |
-| PUT | `/:id` | ADMIN |
-| PATCH | `/:id/estado` | ADMIN |
-| DELETE | `/:id` | ADMIN |
-| POST | `/verificar-productos` | ADMIN |
-| POST | `/pedir-mas-stock` | ADMIN |
-
 ### Carrito — `/carrito`
 
 Todas las rutas requieren autenticación (el carrito se asocia al usuario logueado).
@@ -338,24 +311,6 @@ Todas las rutas requieren autenticación (el carrito se asocia al usuario loguea
 | DELETE | `/items/:productoId` |
 | DELETE | `/` (vaciar carrito) |
 
-### Catálogo — `/catalogo`
-
-| Método | Ruta | Acceso |
-|---|---|---|
-| GET | `/productos` | Público (catálogo de tienda) |
-| GET | `/productos/:id` | Público |
-| GET | `/categorias` | Público |
-| GET | `/marcas` | Público |
-| GET | `/proveedor` | ADMIN, PROVEEDOR (productos propios del proveedor) |
-| POST | `/proveedor` | ADMIN, PROVEEDOR |
-| PUT | `/proveedor/:id` | ADMIN, PROVEEDOR |
-| DELETE | `/proveedor/:id` | ADMIN, PROVEEDOR |
-| GET | `/` | Autenticado (catálogo del proveedor en tabla `Catalogo`) |
-| GET | `/:id` | Autenticado |
-| POST | `/` | ADMIN, PROVEEDOR |
-| PUT | `/:id` | ADMIN, PROVEEDOR |
-| DELETE | `/:id` | ADMIN |
-
 ### Subida de imágenes — `/upload`
 
 | Método | Ruta | Acceso |
@@ -366,7 +321,7 @@ Todas las rutas requieren autenticación (el carrito se asocia al usuario loguea
 
 ## Subida de imágenes (Cloudinary)
 
-El módulo `upload` (`src/controllers/upload.controller.js`) sube archivos a Cloudinary usando `multer` en memoria y `cloudinary.uploader.upload_stream`. Cada imagen se guarda bajo el prefijo `sisgem/<folder>` (carpeta por defecto `general`, validada con una expresión regular), se redimensiona a un ancho máximo configurable (200–2000px, por defecto 1600px) y se sirve con `quality: auto` y `fetch_format: auto` para optimizar peso. Este mismo mecanismo de Cloudinary es el que respalda las imágenes de productos, marcas, proveedores y banners en el resto de la API.
+El módulo `upload` (`src/controllers/upload.controller.js`) sube archivos a Cloudinary usando `multer` en memoria y `cloudinary.uploader.upload_stream`. Cada imagen se guarda bajo el prefijo `sisgem/<folder>` (carpeta por defecto `general`, validada con una expresión regular), se redimensiona a un ancho máximo configurable (200–2000px, por defecto 1600px) y se sirve con `quality: auto` y `fetch_format: auto` para optimizar peso. Este mismo mecanismo de Cloudinary es el que respalda las imágenes de productos, marcas y banners en el resto de la API.
 
 ## Recuperación de contraseña
 
@@ -379,7 +334,7 @@ Flujo de `POST /api/auth/forgot-password` y `POST /api/auth/reset-password` (`sr
 
 ## Exportación / Importación en Excel
 
-Usando la librería `xlsx`, los módulos de **categorías**, **marcas** y **productos** exponen endpoints `GET /export` (descarga en Excel) e `POST /import` (carga masiva desde un archivo Excel enviado como `multipart/form-data` en el campo `file`). No hay endpoints de exportación/importación Excel para proveedores, catálogo, pagos u otros módulos en el código actual.
+Usando la librería `xlsx`, los módulos de **categorías**, **marcas** y **productos** exponen endpoints `GET /export` (descarga en Excel) e `POST /import` (carga masiva desde un archivo Excel enviado como `multipart/form-data` en el campo `file`). No hay endpoints de exportación/importación Excel para pagos u otros módulos en el código actual.
 
 ## Usuario administrador por defecto
 

@@ -1,4 +1,4 @@
-const { Usuario, Rol, Proveedor } = require('../models');
+const { Usuario, Rol } = require('../models');
 const jwt = require('jsonwebtoken');
 const { successResponse, errorResponse } = require('../utils/helpers');
 const { sendMail } = require('../config/mailer');
@@ -97,10 +97,6 @@ exports.login = async (req, res) => {
       nombre: usuario.nombre
     };
 
-    if (usuario.proveedorId) {
-      tokenPayload.proveedor = usuario.proveedorId;
-    }
-
     const token = jwt.sign(
       tokenPayload,
       process.env.JWT_SECRET,
@@ -116,7 +112,6 @@ const usuarioData = {
       telefono: usuario.telefono,
       rol: usuario.rol ? usuario.rol.nombre : 'USUARIO',
       rol_id: usuario.rol ? usuario.rol.id : null,
-      proveedor: usuario.proveedorId || null,
       estado: usuario.estado,
       createdAt: usuario.createdAt
     };
@@ -132,8 +127,7 @@ exports.me = async (req, res) => {
   try {
     const usuario = await Usuario.findByPk(req.user.documento, {
       include: [
-        { model: Rol, as: 'rol' },
-        { model: Proveedor, as: 'proveedor', attributes: ['nombre'] }
+        { model: Rol, as: 'rol' }
       ]
     });
     
@@ -154,7 +148,6 @@ exports.me = async (req, res) => {
       rol: usuario.rol ? usuario.rol.nombre : 'USUARIO',
       rol_id: usuario.rol ? usuario.rol.id : null,
       permisos: usuario.rol ? usuario.rol.permisos : [],
-      proveedor: usuario.proveedorId || null,
       estado: usuario.estado,
       createdAt: usuario.createdAt
     };

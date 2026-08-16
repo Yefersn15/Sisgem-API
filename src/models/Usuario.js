@@ -63,11 +63,6 @@ const Usuario = sequelize.define('Usuario', {
     type: DataTypes.INTEGER,
     allowNull: true,
     field: 'rol_id'
-  },
-  proveedorId: {
-    type: DataTypes.INTEGER,
-    allowNull: true,
-    field: 'proveedor_id'
   }
 }, {
   tableName: 'usuarios',

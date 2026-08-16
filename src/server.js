@@ -24,7 +24,6 @@ async function ensureAdminUser() {
           'productos.read', 'productos.write', 'productos.delete',
           'categorias.read', 'categorias.write', 'categorias.delete',
           'marcas.read', 'marcas.write', 'marcas.delete',
-          'proveedores.read', 'proveedores.write', 'proveedores.delete',
           'usuarios.read', 'usuarios.write', 'usuarios.delete',
           'roles.read', 'roles.write', 'roles.delete',
           'config.read', 'config.write',

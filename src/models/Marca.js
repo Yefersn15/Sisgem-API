@@ -25,11 +25,6 @@ const Marca = sequelize.define('Marca', {
     allowNull: true,
     field: 'sitio_web'
   },
-  proveedorId: {
-    type: DataTypes.INTEGER,
-    allowNull: true,
-    field: 'proveedor_id'
-  },
   estado: {
     type: DataTypes.BOOLEAN,
     defaultValue: true

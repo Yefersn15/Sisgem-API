@@ -1,9 +1,9 @@
-const { Producto, Categoria, Marca, Proveedor } = require('../models');
+const { Producto, Categoria, Marca } = require('../models');
 const { successResponse, errorResponse } = require('../utils/helpers');
 
 exports.listar = async (req, res) => {
   try {
-    const { categoria, marca, proveedor, estado, search } = req.query;
+    const { categoria, marca, estado, search } = req.query;
     const where = {};
 
     const isStaff = req.user && ['ADMIN', 'EMPLEADO'].includes(req.user.rol);
@@ -15,13 +15,7 @@ exports.listar = async (req, res) => {
 
     if (categoria) where.categoriaId = categoria;
     if (marca) where.marcaId = marca;
-    
-    if (req.user && req.user.rol === 'PROVEEDOR' && req.user.proveedor) {
-      where.proveedorId = req.user.proveedor;
-    } else if (proveedor) {
-      where.proveedorId = proveedor;
-    }
-    
+
     if (search) {
       where.nombre = { [require('sequelize').Op.iLike]: `%${search}%` };
     }
@@ -44,7 +38,7 @@ exports.listar = async (req, res) => {
 
 exports.crear = async (req, res) => {
   try {
-    const { nombre, descripcion, precio, stock, imagen, categoriaId, marcaId, proveedorId, estado, stockMinimo, precioCompra, codigoBarras } = req.body;
+    const { nombre, descripcion, precio, stock, imagen, categoriaId, marcaId, estado, stockMinimo, precioCompra, codigoBarras } = req.body;
 
     if (categoriaId) {
       const categoria = await Categoria.findByPk(categoriaId);
@@ -60,14 +54,6 @@ exports.crear = async (req, res) => {
       }
     }
 
-    let proveedorFinal = proveedorId;
-    if (req.user && req.user.rol === 'PROVEEDOR') {
-      if (!req.user.proveedor) {
-        return errorResponse(res, 'No tiene un proveedor asignado. Contacte al administrador.', 403);
-      }
-      proveedorFinal = req.user.proveedor;
-    }
-
     const nuevoProducto = await Producto.create({
       nombre,
       descripcion,
@@ -76,7 +62,6 @@ exports.crear = async (req, res) => {
       imagen,
       categoriaId: categoriaId || 1,
       marcaId: marcaId || 1,
-      proveedorId: proveedorFinal,
       estado: estado !== undefined ? estado : true,
       stockMinimo: stockMinimo || 0,
       precioCompra,
@@ -104,8 +89,7 @@ exports.verDetalle = async (req, res) => {
     const producto = await Producto.findByPk(id, {
       include: [
         { model: Categoria, as: 'categoria', attributes: ['nombre'] },
-        { model: Marca, as: 'marca', attributes: ['nombre'] },
-        { model: Proveedor, as: 'proveedor', attributes: ['nombre', 'nit'] }
+        { model: Marca, as: 'marca', attributes: ['nombre'] }
       ]
     });
 
@@ -123,7 +107,7 @@ exports.verDetalle = async (req, res) => {
 exports.actualizar = async (req, res) => {
   try {
     const { id } = req.params;
-    const { nombre, descripcion, precio, stock, imagen, categoriaId, marcaId, proveedorId, estado, stockMinimo, precioCompra, codigoBarras } = req.body;
+    const { nombre, descripcion, precio, stock, imagen, categoriaId, marcaId, estado, stockMinimo, precioCompra, codigoBarras } = req.body;
 
     const producto = await Producto.findByPk(id);
     if (!producto) {
@@ -138,7 +122,6 @@ exports.actualizar = async (req, res) => {
       imagen: imagen !== undefined ? imagen : producto.imagen,
       categoriaId: categoriaId !== undefined ? categoriaId : producto.categoriaId,
       marcaId: marcaId !== undefined ? marcaId : producto.marcaId,
-      proveedorId: proveedorId !== undefined ? proveedorId : producto.proveedorId,
       estado: estado !== undefined ? estado : producto.estado,
       stockMinimo: stockMinimo !== undefined ? stockMinimo : producto.stockMinimo,
       precioCompra: precioCompra !== undefined ? precioCompra : producto.precioCompra,

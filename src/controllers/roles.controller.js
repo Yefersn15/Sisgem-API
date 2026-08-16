@@ -9,7 +9,6 @@ const PERMISOS_DISPONIBLES = [
   'productos.read', 'productos.write', 'productos.delete',
   'categorias.read', 'categorias.write', 'categorias.delete',
   'marcas.read', 'marcas.write', 'marcas.delete',
-  'proveedores.read', 'proveedores.write', 'proveedores.delete',
   'usuarios.read', 'usuarios.write', 'usuarios.delete',
   'roles.read', 'roles.write', 'roles.delete',
   'config.read', 'config.write',
@@ -34,13 +33,6 @@ exports.seedRoles = async (req, res) => {
           descripcion: 'Cliente que puede realizar compras',
           permisos: ['perfil.read', 'perfil.write', 'pedidos.read'],
           esDefault: true,
-          estado: true
-        },
-        {
-          nombre: 'PROVEEDOR',
-          descripcion: 'Proveedor de productos',
-          permisos: ['productos.read', 'productos.write'],
-          esDefault: false,
           estado: true
         }
       ];

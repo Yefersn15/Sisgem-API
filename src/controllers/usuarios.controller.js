@@ -1,11 +1,11 @@
-const { Usuario, Rol, Proveedor } = require('../models');
+const { Usuario, Rol } = require('../models');
 const { successResponse, errorResponse } = require('../utils/helpers');
 
 const { Op } = require('sequelize');
 
 exports.listar = async (req, res) => {
   try {
-    const { estado, rol, proveedor } = req.query;
+    const { estado, rol } = req.query;
     const where = {};
 
     if (estado !== undefined) {
@@ -16,15 +16,10 @@ exports.listar = async (req, res) => {
       where.rolId = rol;
     }
 
-    if (proveedor) {
-      where.proveedorId = proveedor;
-    }
-
     const usuarios = await Usuario.findAll({
       where,
       include: [
-        { model: Rol, attributes: ['id', 'nombre'], as: 'rol' },
-        { model: Proveedor, attributes: ['id', 'nombre'], as: 'proveedor' }
+        { model: Rol, attributes: ['id', 'nombre'], as: 'rol' }
       ],
       attributes: { exclude: ['password'] },
       order: [['createdAt', 'DESC']]
@@ -39,7 +34,7 @@ exports.listar = async (req, res) => {
 
 exports.crear = async (req, res) => {
   try {
-    const { nombre, email, password, telefono, apellido, rolId, documento, proveedorId, tipoDocumento, genero, direccion, barrio } = req.body;
+    const { nombre, email, password, telefono, apellido, rolId, documento, tipoDocumento, genero, direccion, barrio } = req.body;
 
     const existeUsuario = await Usuario.findOne({ where: { email } });
     if (existeUsuario) {
@@ -71,14 +66,12 @@ exports.crear = async (req, res) => {
       genero,
       direccion,
       barrio,
-      rolId: defaultRolId,
-      proveedorId: proveedorId || null
+      rolId: defaultRolId
     });
 
     const usuarioCreado = await Usuario.findByPk(nuevoUsuario.documento, {
       include: [
-        { model: Rol, as: 'rol', attributes: ['id', 'nombre'] },
-        { model: Proveedor, as: 'proveedor', attributes: ['id', 'nombre'] }
+        { model: Rol, as: 'rol', attributes: ['id', 'nombre'] }
       ],
       attributes: { exclude: ['password'] }
     });
@@ -97,8 +90,7 @@ exports.verDetallePorDocumento = async (req, res) => {
     const usuario = await Usuario.findOne({
       where: { documento },
       include: [
-        { model: Rol, attributes: ['id', 'nombre'], as: 'rol' },
-        { model: Proveedor, attributes: ['nombre'], as: 'proveedor' }
+        { model: Rol, attributes: ['id', 'nombre'], as: 'rol' }
       ],
       attributes: { exclude: ['password'] }
     });
@@ -120,8 +112,7 @@ exports.verDetalle = async (req, res) => {
 
     const usuario = await Usuario.findByPk(id, {
       include: [
-        { model: Rol, attributes: ['id', 'nombre'], as: 'rol' },
-        { model: Proveedor, attributes: ['nombre'], as: 'proveedor' }
+        { model: Rol, attributes: ['id', 'nombre'], as: 'rol' }
       ],
       attributes: { exclude: ['password'] }
     });
@@ -140,7 +131,7 @@ exports.verDetalle = async (req, res) => {
 exports.actualizar = async (req, res) => {
   try {
     const { id } = req.params;
-    const { nombre, apellido, telefono, rolId, email, proveedorId, tipoDocumento, genero, direccion, barrio, estado } = req.body;
+    const { nombre, apellido, telefono, rolId, email, tipoDocumento, genero, direccion, barrio, estado } = req.body;
 
     const usuario = await Usuario.findByPk(id);
     if (!usuario) {
@@ -164,14 +155,12 @@ exports.actualizar = async (req, res) => {
       genero: genero !== undefined ? genero : usuario.genero,
       direccion: direccion !== undefined ? direccion : usuario.direccion,
       barrio: barrio !== undefined ? barrio : usuario.barrio,
-      proveedorId: proveedorId !== undefined ? (proveedorId || null) : usuario.proveedorId,
       estado: estado !== undefined ? estado : usuario.estado
     });
 
     const usuarioActualizado = await Usuario.findByPk(usuario.documento, {
       include: [
-        { model: Rol, attributes: ['id', 'nombre'], as: 'rol' },
-        { model: Proveedor, attributes: ['nombre'], as: 'proveedor' }
+        { model: Rol, attributes: ['id', 'nombre'], as: 'rol' }
       ],
       attributes: { exclude: ['password'] }
     });
