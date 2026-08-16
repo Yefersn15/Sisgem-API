@@ -159,9 +159,11 @@ CREATE TABLE IF NOT EXISTS ordenes_compra (
 
 CREATE TABLE IF NOT EXISTS banners (
   id SERIAL PRIMARY KEY,
-  image_url TEXT NOT NULL,
-  image_data BYTEA,
+  layout VARCHAR(30) NOT NULL DEFAULT 'single',
+  images JSONB NOT NULL DEFAULT '[]'::jsonb,
   titulo VARCHAR(200),
+  texto TEXT,
+  text_position VARCHAR(10) NOT NULL DEFAULT 'none',
   display_order INTEGER DEFAULT 0,
   estado BOOLEAN DEFAULT TRUE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,

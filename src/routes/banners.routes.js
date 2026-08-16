@@ -1,27 +1,14 @@
 const express = require('express');
 const router = express.Router();
+const bannersController = require('../controllers/banners.controller');
+const { verifyToken, checkRole } = require('../middlewares/auth');
 
-// Rutas públicas (sin autenticación)
-router.get('/', async (req, res) => {
-  try {
-    // Retornar array vacío por defecto si no hay banners
-    // Esto se puede extender con un modelo real de banners
-    res.json([]);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-});
+// Ruta pública (sin autenticación) - solo banners activos
+router.get('/', bannersController.listar);
 
-router.post('/', async (req, res) => {
-  res.status(401).json({ message: 'No autorizado' });
-});
-
-router.put('/:id', async (req, res) => {
-  res.status(401).json({ message: 'No autorizado' });
-});
-
-router.delete('/:id', async (req, res) => {
-  res.status(401).json({ message: 'No autorizado' });
-});
+// Rutas protegidas - Solo ADMIN
+router.post('/', verifyToken, checkRole(['ADMIN']), bannersController.crear);
+router.put('/:id', verifyToken, checkRole(['ADMIN']), bannersController.actualizar);
+router.delete('/:id', verifyToken, checkRole(['ADMIN']), bannersController.eliminar);
 
 module.exports = router;

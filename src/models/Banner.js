@@ -7,19 +7,32 @@ const Banner = sequelize.define('Banner', {
     autoIncrement: true,
     primaryKey: true
   },
-  imageUrl: {
-    type: DataTypes.TEXT,
+  layout: {
+    type: DataTypes.STRING(30),
     allowNull: false,
-    field: 'image_url'
+    defaultValue: 'single'
+    // clave de la plantilla de collage: single | duo | trio | grid-4 | grid-6 | mosaic-8
   },
-  imageData: {
-    type: DataTypes.BLOB,
-    allowNull: true,
-    field: 'image_data'
+  images: {
+    type: DataTypes.JSONB,
+    allowNull: false,
+    defaultValue: []
+    // [{ slot: number, url: string }] - una entrada por cada casilla de la plantilla
   },
   titulo: {
     type: DataTypes.STRING(200),
     allowNull: true
+  },
+  texto: {
+    type: DataTypes.TEXT,
+    allowNull: true
+  },
+  textPosition: {
+    type: DataTypes.STRING(10),
+    allowNull: false,
+    defaultValue: 'none',
+    field: 'text_position'
+    // left | right | center | none
   },
   displayOrder: {
     type: DataTypes.INTEGER,
