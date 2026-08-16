@@ -36,10 +36,6 @@ const Proveedor = sequelize.define('Proveedor', {
     type: DataTypes.TEXT,
     allowNull: true
   },
-  logoData: {
-    type: DataTypes.BLOB,
-    allowNull: true
-  },
   estado: {
     type: DataTypes.BOOLEAN,
     defaultValue: true

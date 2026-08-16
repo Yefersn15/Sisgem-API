@@ -33,11 +33,6 @@ const Producto = sequelize.define('Producto', {
     allowNull: true,
     field: 'imagen'
   },
-  imagenData: {
-    type: DataTypes.BLOB,
-    allowNull: true,
-    field: 'imagen_data'
-  },
   codigoBarras: {
     type: DataTypes.STRING(50),
     allowNull: true,

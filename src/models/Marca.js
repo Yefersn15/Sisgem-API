@@ -20,10 +20,6 @@ const Marca = sequelize.define('Marca', {
     type: DataTypes.TEXT,
     allowNull: true
   },
-  logoData: {
-    type: DataTypes.BLOB,
-    allowNull: true
-  },
   sitioWeb: {
     type: DataTypes.STRING(255),
     allowNull: true,

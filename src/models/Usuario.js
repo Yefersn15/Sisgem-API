@@ -55,11 +55,6 @@ const Usuario = sequelize.define('Usuario', {
     allowNull: true,
     field: 'foto_url'
   },
-  fotoData: {
-    type: DataTypes.BLOB,
-    allowNull: true,
-    field: 'foto_data'
-  },
   direcciones: {
     type: DataTypes.JSONB,
     defaultValue: []

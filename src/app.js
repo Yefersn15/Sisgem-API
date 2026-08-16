@@ -22,6 +22,7 @@ const bannersRoutes = require('./routes/banners.routes');
 const ordenesCompraRoutes = require('./routes/ordenesCompra.routes');
 const carritoRoutes = require('./routes/carrito.routes');
 const catalogoRoutes = require('./routes/catalogo.routes');
+const uploadRoutes = require('./routes/upload.routes');
 
 const app = express();
 
@@ -59,6 +60,7 @@ app.use('/api/banners', bannersRoutes);
 app.use('/api/ordenes-compra', ordenesCompraRoutes);
 app.use('/api/carrito', carritoRoutes);
 app.use('/api/catalogo', catalogoRoutes);
+app.use('/api/upload', uploadRoutes);
 
 // Ruta de prueba
 app.get('/', (req, res) => {
