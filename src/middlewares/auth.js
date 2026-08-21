@@ -1,6 +1,22 @@
 const jwt = require('jsonwebtoken');
 const { Usuario, Rol } = require('../models');
 
+// Para rutas públicas que además quieren distinguir "visitante anónimo" de
+// "staff autenticado" (por ejemplo, para mostrar también los inactivos a
+// ADMIN/EMPLEADO). A diferencia de verifyToken, NUNCA rechaza la solicitud:
+// si no hay token o es inválido, sigue como anónimo (req.user queda undefined).
+const optionalAuth = (req, res, next) => {
+  const token = req.header('Authorization')?.replace('Bearer ', '');
+  if (!token) return next();
+
+  try {
+    req.user = jwt.verify(token, process.env.JWT_SECRET);
+  } catch (error) {
+    // Token inválido o expirado: continuar como anónimo en vez de fallar.
+  }
+  next();
+};
+
 const verifyToken = (req, res, next) => {
   const token = req.header('Authorization')?.replace('Bearer ', '');
   
@@ -132,6 +148,7 @@ const allowSelfOrAdmin = (req, res, next) => {
 
 module.exports = {
   verifyToken,
+  optionalAuth,
   checkRole,
   checkPermission,
   checkRoleOrPermission,

@@ -53,10 +53,11 @@ async function ensureAdminUser() {
     });
 
     if (!created) {
+      // No se resetea la contraseña aquí: si el admin ya la cambió, un
+      // reinicio del servidor no debe devolverla a la de fábrica.
       await usuario.update({
         rolId: rol.id,
-        estado: true,
-        password: 'Admin123!'
+        estado: true
       });
     }
 

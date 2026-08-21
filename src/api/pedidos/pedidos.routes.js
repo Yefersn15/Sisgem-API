@@ -1,0 +1,22 @@
+const express = require('express');
+const router = express.Router();
+const pedidosController = require('./pedidos.controller');
+const { validate, crearSchema } = require('./pedidos.validator');
+const { verifyToken, checkRole } = require('../../middlewares/auth');
+const { createLimiter } = require('../../middlewares/rateLimit');
+
+router.get('/', verifyToken, checkRole(['ADMIN']), pedidosController.listarPedidos); // pedidos activos - solo ADMIN
+router.get('/ventas', verifyToken, checkRole(['ADMIN']), pedidosController.listarVentas); // ventas - solo ADMIN
+router.get('/mis-pedidos', verifyToken, pedidosController.misPedidos);
+router.post('/', verifyToken, createLimiter, validate(crearSchema), pedidosController.crear);
+router.get('/:id', verifyToken, pedidosController.verDetalle);
+router.put('/:id', verifyToken, checkRole(['ADMIN']), pedidosController.actualizar);
+router.delete('/:id', verifyToken, checkRole(['ADMIN']), pedidosController.cancelar);
+router.patch('/:id/estado', verifyToken, checkRole(['ADMIN']), pedidosController.cambiarEstadoPedido);
+router.post('/:id/convertir-venta', verifyToken, checkRole(['ADMIN']), pedidosController.convertirAVenta);
+router.patch('/:id/aprobar-abono', verifyToken, checkRole(['ADMIN']), pedidosController.aprobarAbono);
+router.patch('/:id/aprobar', verifyToken, checkRole(['ADMIN']), pedidosController.aprobarAbono);
+router.patch('/:id/rechazar-abono', verifyToken, checkRole(['ADMIN']), pedidosController.rechazarAbono);
+router.patch('/:id/rechazar', verifyToken, checkRole(['ADMIN']), pedidosController.rechazarAbono);
+
+module.exports = router;
