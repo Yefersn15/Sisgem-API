@@ -66,11 +66,14 @@ describe('Upload API', () => {
     expect(res.status).toBe(401);
   });
 
-  test('GET /api/upload requiere rol ADMIN', async () => {
+  // Subir/listar imágenes es infraestructura compartida (p. ej. la foto de
+  // perfil de Mi Perfil, que edita cualquier cliente, no solo ADMIN) — a
+  // diferencia de eliminar, que sigue reservado a ADMIN más abajo.
+  test('GET /api/upload funciona para cualquier usuario autenticado, no solo ADMIN', async () => {
     const res = await request(app)
       .get('/api/upload')
       .set('Authorization', `Bearer ${usuarioToken}`);
-    expect(res.status).toBe(403);
+    expect(res.status).toBe(200);
   });
 
   test('POST /api/upload requiere autenticación', async () => {
@@ -78,11 +81,12 @@ describe('Upload API', () => {
     expect(res.status).toBe(401);
   });
 
-  test('POST /api/upload requiere rol ADMIN', async () => {
+  test('POST /api/upload funciona para cualquier usuario autenticado, no solo ADMIN (sin archivo devuelve 400, no llega a Cloudinary)', async () => {
     const res = await request(app)
       .post('/api/upload')
       .set('Authorization', `Bearer ${usuarioToken}`);
-    expect(res.status).toBe(403);
+    expect(res.status).toBe(400);
+    expect(res.body.message).toMatch(/no se proporcionó ninguna imagen/i);
   });
 
   test('POST /api/upload con ADMIN pero sin archivo devuelve 400 (no llega a Cloudinary)', async () => {

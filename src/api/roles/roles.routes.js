@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const rolesController = require('./roles.controller');
 const { validate, crearSchema, actualizarSchema } = require('./roles.validator');
-const { verifyToken, checkRole } = require('../../middlewares/auth');
+const { verifyToken, checkRoleOrPermission } = require('../../middlewares/auth');
 
 // Ruta pública para obtener rol por nombre (sin autenticación)
 router.get('/nombre/:nombre', rolesController.verPorNombre);
@@ -13,16 +13,17 @@ router.get('/permisos', rolesController.listarPermisos);
 // Ruta pública para crear roles por defecto (solo si no existen) - sin auth
 router.post('/seed', rolesController.seedRoles);
 
-// Rutas protegidas - Solo admin
-router.get('/', verifyToken, checkRole(['ADMIN']), rolesController.listar);
-router.post('/', verifyToken, checkRole(['ADMIN']), validate(crearSchema), rolesController.crear);
+// ADMIN o el permiso granular roles.* del rol propio (ver
+// checkRoleOrPermission) — antes checkRole(['ADMIN']) fijo, así que ningún
+// rol personalizado con roles.write marcado podía usar estas rutas.
+router.get('/', verifyToken, checkRoleOrPermission(['ADMIN'], 'roles.read'), rolesController.listar);
+router.post('/', verifyToken, checkRoleOrPermission(['ADMIN'], 'roles.write'), validate(crearSchema), rolesController.crear);
 
 // Ruta protegida - usuario autenticado puede ver detalle de cualquier rol
 router.get('/:id', verifyToken, rolesController.verDetalle);
 
-// Rutas protegidas - Solo admin
-router.put('/:id', verifyToken, checkRole(['ADMIN']), validate(actualizarSchema), rolesController.actualizar);
-router.delete('/:id', verifyToken, checkRole(['ADMIN']), rolesController.eliminar);
-router.patch('/:id/estado', verifyToken, checkRole(['ADMIN']), rolesController.cambiarEstado);
+router.put('/:id', verifyToken, checkRoleOrPermission(['ADMIN'], 'roles.write'), validate(actualizarSchema), rolesController.actualizar);
+router.delete('/:id', verifyToken, checkRoleOrPermission(['ADMIN'], 'roles.delete'), rolesController.eliminar);
+router.patch('/:id/estado', verifyToken, checkRoleOrPermission(['ADMIN'], 'roles.write'), rolesController.cambiarEstado);
 
 module.exports = router;

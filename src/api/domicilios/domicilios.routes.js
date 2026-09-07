@@ -2,26 +2,29 @@ const express = require('express');
 const router = express.Router();
 const domiciliosController = require('./domicilios.controller');
 const { validate, crearSchema } = require('./domicilios.validator');
-const { verifyToken, checkRole, checkPermission } = require('../../middlewares/auth');
+const { verifyToken, checkRoleOrPermission, checkPermission } = require('../../middlewares/auth');
 const { createLimiter } = require('../../middlewares/rateLimit');
 
-// Rutas protegidas - Solo ADMIN
-router.get('/', verifyToken, checkRole(['ADMIN']), domiciliosController.listar);
-router.post('/', verifyToken, checkRole(['ADMIN']), createLimiter, validate(crearSchema), domiciliosController.crear);
-router.get('/:id', verifyToken, checkRole(['ADMIN']), domiciliosController.verDetalle);
-router.put('/:id', verifyToken, checkRole(['ADMIN']), domiciliosController.actualizar);
-router.patch('/:id', verifyToken, checkRole(['ADMIN']), domiciliosController.actualizar);
-router.patch('/:id/estado', verifyToken, checkRole(['ADMIN']), domiciliosController.cambiarEstado);
-router.patch('/:id/convertir', verifyToken, checkRole(['ADMIN']), domiciliosController.cambiarEstado);
-router.patch('/:id/tarifa', verifyToken, checkRole(['ADMIN']), domiciliosController.actualizarTarifa);
-router.patch('/:id/repartidor', verifyToken, checkRole(['ADMIN']), domiciliosController.asignarRepartidor);
-router.get('/usuario/:usuarioId', verifyToken, checkRole(['ADMIN']), domiciliosController.porCliente);
+// ADMIN o el permiso granular domicilios.* del rol propio (ver
+// checkRoleOrPermission) — antes checkRole(['ADMIN']) fijo, así que ningún
+// rol personalizado (p. ej. un Trabajador con domicilios.write para asignar
+// repartidor desde caja) podía usar ninguna de estas rutas.
+router.get('/', verifyToken, checkRoleOrPermission(['ADMIN'], 'domicilios.read'), domiciliosController.listar);
+router.post('/', verifyToken, checkRoleOrPermission(['ADMIN'], 'domicilios.write'), createLimiter, validate(crearSchema), domiciliosController.crear);
+router.get('/:id', verifyToken, checkRoleOrPermission(['ADMIN'], 'domicilios.read'), domiciliosController.verDetalle);
+router.put('/:id', verifyToken, checkRoleOrPermission(['ADMIN'], 'domicilios.write'), domiciliosController.actualizar);
+router.patch('/:id', verifyToken, checkRoleOrPermission(['ADMIN'], 'domicilios.write'), domiciliosController.actualizar);
+router.patch('/:id/estado', verifyToken, checkRoleOrPermission(['ADMIN'], 'domicilios.write'), domiciliosController.cambiarEstado);
+router.patch('/:id/convertir', verifyToken, checkRoleOrPermission(['ADMIN'], 'domicilios.write'), domiciliosController.cambiarEstado);
+router.patch('/:id/tarifa', verifyToken, checkRoleOrPermission(['ADMIN'], 'domicilios.write'), domiciliosController.actualizarTarifa);
+router.patch('/:id/repartidor', verifyToken, checkRoleOrPermission(['ADMIN'], 'domicilios.write'), domiciliosController.asignarRepartidor);
+router.get('/usuario/:usuarioId', verifyToken, checkRoleOrPermission(['ADMIN'], 'domicilios.read'), domiciliosController.porCliente);
 
 // Rutas de tarifas accesibles también desde /api/domicilios/tarifas
-router.get('/tarifas', verifyToken, checkRole(['ADMIN']), domiciliosController.listarTarifas);
-router.post('/tarifas', verifyToken, checkRole(['ADMIN']), domiciliosController.crearTarifa);
-router.put('/tarifas/:id', verifyToken, checkRole(['ADMIN']), domiciliosController.actualizarTarifaTemplate);
-router.delete('/tarifas/:id', verifyToken, checkRole(['ADMIN']), domiciliosController.eliminarTarifaTemplate);
+router.get('/tarifas', verifyToken, checkRoleOrPermission(['ADMIN'], 'domicilios.read'), domiciliosController.listarTarifas);
+router.post('/tarifas', verifyToken, checkRoleOrPermission(['ADMIN'], 'domicilios.write'), domiciliosController.crearTarifa);
+router.put('/tarifas/:id', verifyToken, checkRoleOrPermission(['ADMIN'], 'domicilios.write'), domiciliosController.actualizarTarifaTemplate);
+router.delete('/tarifas/:id', verifyToken, checkRoleOrPermission(['ADMIN'], 'domicilios.delete'), domiciliosController.eliminarTarifaTemplate);
 
 // Rutas para usuarios autenticados (repartidor y cliente)
 router.get('/mis-domicilios', verifyToken, domiciliosController.misDomicilios);
