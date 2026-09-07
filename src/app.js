@@ -27,6 +27,17 @@ const upload = multer({ storage });
 
 const app = express();
 
+// Render (como Heroku/Railway) pone la API detrás de un proxy inverso: sin
+// esto, Express no confía en la cabecera X-Forwarded-For y `req.ip` devuelve
+// la IP interna del proxy para TODAS las peticiones, sin importar quién las
+// haga de verdad. express-rate-limit usa `req.ip` como clave por defecto, así
+// que sin este ajuste todos los visitantes comparten un único cupo de
+// solicitudes — cualquiera se queda bloqueado (429) casi de inmediato,
+// incluso en su primera visita, porque el cupo ya lo agotó tráfico de otra
+// persona. `1` le dice a Express que confíe solo en el primer proxy de la
+// cadena (el de Render), que es exactamente la topología real.
+app.set('trust proxy', 1);
+
 // Lista blanca de orígenes permitidos (front web). No aplica a apps nativas
 // (la app móvil no manda cabecera Origin, así que CORS no la afecta).
 // Configurable por env: CORS_ORIGINS admite varios orígenes separados por coma.
