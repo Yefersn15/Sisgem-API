@@ -95,6 +95,7 @@ exports.login = async ({ email, documento, password }) => {
     rol_id: usuario.rol ? usuario.rol.id : null,
     estado: usuario.estado,
     fotoUrl: usuario.fotoUrl,
+    esAdminPrincipal: usuario.esAdminPrincipal,
     createdAt: usuario.createdAt
   };
 
@@ -122,6 +123,7 @@ exports.getMe = async (documento) => {
     permisos: usuario.rol ? usuario.rol.permisos : [],
     estado: usuario.estado,
     fotoUrl: usuario.fotoUrl,
+    esAdminPrincipal: usuario.esAdminPrincipal,
     createdAt: usuario.createdAt
   };
 };
