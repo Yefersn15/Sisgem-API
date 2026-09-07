@@ -7,6 +7,16 @@ const sequelize = require(path.join(__dirname, '..', 'src', 'config', 'database'
     await sequelize.authenticate();
     console.log('🟢 Database connection established');
 
+    // En una base de datos nueva (recien creada en Aiven, por ejemplo) esta
+    // migracion corre como postinstall ANTES de que exista ninguna tabla
+    // (esas las crea `npm run db:init`). Si "domicilios" todavia no existe,
+    // no hay nada que migrar: se sale limpio en vez de tumbar el build.
+    const [[tabla]] = await sequelize.query(`SELECT to_regclass('public.domicilios') AS existe`);
+    if (!tabla.existe) {
+      console.log('ℹ️ La tabla "domicilios" todavia no existe (base de datos nueva) — nada que migrar, se omite.');
+      process.exit(0);
+    }
+
     // 1. Find duplicates: pedido_id with more than one domicilio
     const [duplicates] = await sequelize.query(`
       SELECT pedido_id, COUNT(*) as count
