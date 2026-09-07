@@ -23,7 +23,7 @@ exports.listar = async ({ estado, rol, search, pagination }) => {
 };
 
 exports.crear = async (data) => {
-  const { nombre, email, password, telefono, apellido, rolId, documento, tipoDocumento, genero, direccion, barrio } = data;
+  const { nombre, email, password, telefono, apellido, rolId, documento, tipoDocumento, genero, direccion, barrio, fotoUrl } = data;
 
   const existeUsuario = await repository.findByEmail(email);
   if (existeUsuario) throw new AppError('El email ya está registrado', 400);
@@ -50,6 +50,7 @@ exports.crear = async (data) => {
     genero,
     direccion,
     barrio,
+    fotoUrl,
     rolId: defaultRolId
   });
 
@@ -73,7 +74,7 @@ exports.obtenerPorId = async (id) => {
 // puede ser tocada por nadie más, y ni ella misma puede cambiarse el rol,
 // el estado o la contraseña desde la aplicación — solo datos de contacto.
 exports.actualizar = async (id, data, requester) => {
-  const { nombre, apellido, telefono, rolId, email, tipoDocumento, genero, direccion, barrio, estado, password } = data;
+  const { nombre, apellido, telefono, rolId, email, tipoDocumento, genero, direccion, barrio, estado, password, fotoUrl } = data;
 
   const usuario = await repository.findById(id);
   if (!usuario) throw new AppError('Usuario no encontrado', 404);
@@ -102,6 +103,7 @@ exports.actualizar = async (id, data, requester) => {
     genero: genero !== undefined ? genero : usuario.genero,
     direccion: direccion !== undefined ? direccion : usuario.direccion,
     barrio: barrio !== undefined ? barrio : usuario.barrio,
+    fotoUrl: fotoUrl !== undefined ? fotoUrl : usuario.fotoUrl,
     estado: estado !== undefined ? estado : usuario.estado
   });
 

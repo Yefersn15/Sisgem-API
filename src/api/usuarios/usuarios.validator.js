@@ -12,6 +12,7 @@ const crearSchema = z.object({
   genero: z.string().optional(),
   direccion: z.string().optional(),
   barrio: z.string().optional(),
+  fotoUrl: z.string().optional(),
   rolId: z.coerce.number().int().optional(),
 });
 

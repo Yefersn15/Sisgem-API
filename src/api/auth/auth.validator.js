@@ -12,7 +12,7 @@ const registerSchema = z.object({
   genero: z.string().optional(),
   direccion: z.string().optional(),
   barrio: z.string().optional(),
-  foto_url: z.string().optional(),
+  fotoUrl: z.string().optional(),
 });
 
 const validate = (schema) => (req, res, next) => {

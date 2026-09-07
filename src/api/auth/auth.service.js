@@ -7,7 +7,7 @@ const AppError = require('../../utils/AppError');
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 exports.register = async (data) => {
-  const { nombre, email, password, telefono, apellido, documento, tipoDocumento, genero, direccion, barrio, foto_url } = data;
+  const { nombre, email, password, telefono, apellido, documento, tipoDocumento, genero, direccion, barrio, fotoUrl } = data;
 
   if (!nombre || !email || !password || !documento) {
     throw new AppError('Campos requeridos: nombre, email, password, documento', 400);
@@ -50,7 +50,7 @@ exports.register = async (data) => {
     genero,
     direccion,
     barrio,
-    foto_url,
+    fotoUrl,
     rolId: rolUsuario.id
   });
 };
@@ -94,6 +94,7 @@ exports.login = async ({ email, documento, password }) => {
     rol: usuario.rol ? usuario.rol.nombre : 'USUARIO',
     rol_id: usuario.rol ? usuario.rol.id : null,
     estado: usuario.estado,
+    fotoUrl: usuario.fotoUrl,
     createdAt: usuario.createdAt
   };
 
@@ -120,6 +121,7 @@ exports.getMe = async (documento) => {
     rol_id: usuario.rol ? usuario.rol.id : null,
     permisos: usuario.rol ? usuario.rol.permisos : [],
     estado: usuario.estado,
+    fotoUrl: usuario.fotoUrl,
     createdAt: usuario.createdAt
   };
 };
