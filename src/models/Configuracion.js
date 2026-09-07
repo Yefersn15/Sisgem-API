@@ -47,10 +47,11 @@ const Configuracion = sequelize.define('Configuracion', {
   tema: {
     type: DataTypes.JSONB,
     allowNull: false,
-    defaultValue: { colorAcento: '#3b82f6' }
-    // Color de acento del sitio (botones, enlaces, bordes de foco); el modo
-    // claro/oscuro sigue siendo una preferencia personal por navegador (ver
-    // hooks/useModoOscuro.js), no algo que el admin fije para todos.
+    defaultValue: { modo: 'NINGUNO', paletaId: null, colores: null }
+    // { modo: 'NINGUNO'|'PREDEFINIDO'|'PERSONALIZADO', paletaId, colores: {fondo,superficie,encabezado,acento,secundario} }
+    // El modo claro/oscuro sigue siendo una preferencia personal por
+    // navegador (ver hooks/useModoOscuro.js), no algo que el admin fije
+    // para todos.
   },
   mapaEmbedUrl: {
     type: DataTypes.TEXT,

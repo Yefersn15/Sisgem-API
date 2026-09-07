@@ -8,8 +8,18 @@ const horarioReglaSchema = z.object({
   cerrado: z.boolean().optional()
 });
 
+const coloresTemaSchema = z.object({
+  fondo: z.string(),
+  superficie: z.string(),
+  encabezado: z.string(),
+  acento: z.string(),
+  secundario: z.string()
+});
+
 const temaSchema = z.object({
-  colorAcento: z.string().optional()
+  modo: z.enum(['NINGUNO', 'PREDEFINIDO', 'PERSONALIZADO']).optional(),
+  paletaId: z.string().nullable().optional(),
+  colores: coloresTemaSchema.nullable().optional()
 });
 
 const actualizarSchema = z.object({
