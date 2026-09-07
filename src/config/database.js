@@ -11,6 +11,14 @@ const sequelize = new Sequelize(
     port: process.env.DB_PORT || 5432,
     dialect: 'postgres',
     logging: false,
+    // Aiven (y la mayoría de hostings de Postgres administrados) exige SSL;
+    // en local normalmente no se necesita, por eso queda detrás de DB_SSL.
+    dialectOptions: process.env.DB_SSL === 'true' ? {
+      ssl: {
+        require: true,
+        rejectUnauthorized: false
+      }
+    } : {},
     pool: {
       max: 5,
       min: 0,
