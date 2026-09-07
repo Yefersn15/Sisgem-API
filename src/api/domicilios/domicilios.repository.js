@@ -31,16 +31,20 @@ exports.updateById = (id, data, opts) => Domicilio.update(data, { where: { id },
 exports.findAllPorPedidos = (pedidoIds) =>
   Domicilio.findAll({ where: { pedidoId: pedidoIds }, include: [{ model: Pedido, as: 'pedido' }] });
 
+// Ambas asociaciones (Domicilio->Pedido y Pedido->Usuario) se definieron con
+// alias ('pedido'/'usuario', ver models/index.js) — sin el `as` aquí,
+// Sequelize lanza "... is associated using an alias. You must use the 'as'
+// keyword...", así que estas dos consultas nunca llegaban a ejecutarse.
 exports.findAllPorPedidosConUsuario = (pedidoIds) =>
   Domicilio.findAll({
     where: { pedidoId: pedidoIds },
-    include: [{ model: Pedido, include: [{ model: Usuario, attributes: ['nombre', 'documento', 'email', 'telefono'] }] }],
+    include: [{ model: Pedido, as: 'pedido', include: [{ model: Usuario, as: 'usuario', attributes: ['nombre', 'documento', 'email', 'telefono'] }] }],
     order: [['createdAt', 'DESC']]
   });
 
 exports.findAllPorRepartidor = (repartidorId) =>
   Domicilio.findAll({
     where: { repartidorId },
-    include: [{ model: Pedido, include: [{ model: Usuario, attributes: ['nombre', 'documento', 'email', 'telefono'] }] }],
+    include: [{ model: Pedido, as: 'pedido', include: [{ model: Usuario, as: 'usuario', attributes: ['nombre', 'documento', 'email', 'telefono'] }] }],
     order: [['createdAt', 'DESC']]
   });

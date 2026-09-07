@@ -9,15 +9,13 @@ const { createLimiter } = require('../../middlewares/rateLimit');
 // checkRoleOrPermission) — antes checkRole(['ADMIN']) fijo, así que ningún
 // rol personalizado (p. ej. un Trabajador con domicilios.write para asignar
 // repartidor desde caja) podía usar ninguna de estas rutas.
+// Las rutas literales (/tarifas, /mis-domicilios, /usuario/:usuarioId...) deben
+// declararse ANTES que '/:id': Express prueba las rutas en orden de registro,
+// así que si '/:id' fuera primero cualquier ruta literal de un solo segmento
+// (p. ej. '/tarifas' o '/mis-domicilios') quedaría "tapada" — coincidiría con
+// '/:id' primero (id='tarifas') y jamás llegaría a su propio handler.
 router.get('/', verifyToken, checkRoleOrPermission(['ADMIN'], 'domicilios.read'), domiciliosController.listar);
 router.post('/', verifyToken, checkRoleOrPermission(['ADMIN'], 'domicilios.write'), createLimiter, validate(crearSchema), domiciliosController.crear);
-router.get('/:id', verifyToken, checkRoleOrPermission(['ADMIN'], 'domicilios.read'), domiciliosController.verDetalle);
-router.put('/:id', verifyToken, checkRoleOrPermission(['ADMIN'], 'domicilios.write'), domiciliosController.actualizar);
-router.patch('/:id', verifyToken, checkRoleOrPermission(['ADMIN'], 'domicilios.write'), domiciliosController.actualizar);
-router.patch('/:id/estado', verifyToken, checkRoleOrPermission(['ADMIN'], 'domicilios.write'), domiciliosController.cambiarEstado);
-router.patch('/:id/convertir', verifyToken, checkRoleOrPermission(['ADMIN'], 'domicilios.write'), domiciliosController.cambiarEstado);
-router.patch('/:id/tarifa', verifyToken, checkRoleOrPermission(['ADMIN'], 'domicilios.write'), domiciliosController.actualizarTarifa);
-router.patch('/:id/repartidor', verifyToken, checkRoleOrPermission(['ADMIN'], 'domicilios.write'), domiciliosController.asignarRepartidor);
 router.get('/usuario/:usuarioId', verifyToken, checkRoleOrPermission(['ADMIN'], 'domicilios.read'), domiciliosController.porCliente);
 
 // Rutas de tarifas accesibles también desde /api/domicilios/tarifas
@@ -30,7 +28,14 @@ router.delete('/tarifas/:id', verifyToken, checkRoleOrPermission(['ADMIN'], 'dom
 router.get('/mis-domicilios', verifyToken, domiciliosController.misDomicilios);
 router.get('/mis-pedidos-domicilio', verifyToken, domiciliosController.misPedidosDomicilio);
 
-// Ruta para que repartidores actualicen el estado de sus propios domicilio
+router.get('/:id', verifyToken, checkRoleOrPermission(['ADMIN'], 'domicilios.read'), domiciliosController.verDetalle);
+router.put('/:id', verifyToken, checkRoleOrPermission(['ADMIN'], 'domicilios.write'), domiciliosController.actualizar);
+router.patch('/:id', verifyToken, checkRoleOrPermission(['ADMIN'], 'domicilios.write'), domiciliosController.actualizar);
+router.patch('/:id/estado', verifyToken, checkRoleOrPermission(['ADMIN'], 'domicilios.write'), domiciliosController.cambiarEstado);
+router.patch('/:id/convertir', verifyToken, checkRoleOrPermission(['ADMIN'], 'domicilios.write'), domiciliosController.cambiarEstado);
+router.patch('/:id/tarifa', verifyToken, checkRoleOrPermission(['ADMIN'], 'domicilios.write'), domiciliosController.actualizarTarifa);
+router.patch('/:id/repartidor', verifyToken, checkRoleOrPermission(['ADMIN'], 'domicilios.write'), domiciliosController.asignarRepartidor);
+// Ruta para que repartidores actualicen el estado de su propio domicilio
 router.patch('/:id/estado-repartidor', verifyToken, checkPermission('domicilios.write'), domiciliosController.cambiarEstadoRepartidor);
 
 module.exports = router;

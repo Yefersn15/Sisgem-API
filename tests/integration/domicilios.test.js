@@ -5,20 +5,27 @@ const { sequelize, Rol, Usuario, Categoria, Producto } = require('../../src/mode
 describe('Domicilios API', () => {
   let adminToken;
   let clienteToken;
+  let repartidorToken;
+  let repartidorDocumento;
 
   beforeAll(async () => {
     await sequelize.sync({ force: true });
 
     const rolAdmin = await Rol.create({ nombre: 'ADMIN', permisos: [], estado: true });
     const rolCliente = await Rol.create({ nombre: 'CLIENTE', permisos: [], estado: true });
+    const rolRepartidor = await Rol.create({ nombre: 'DOMICILIARIO', permisos: ['domicilios.write'], estado: true });
 
     await Usuario.create({ documento: '500000001', nombre: 'Admin', email: 'admin.domicilios@example.com', password: 'Admin123!', rolId: rolAdmin.id });
     await Usuario.create({ documento: '500000002', nombre: 'Cliente', email: 'cliente.domicilios@example.com', password: 'Cliente123!', rolId: rolCliente.id });
+    await Usuario.create({ documento: '500000010', nombre: 'Repartidor', email: 'repartidor.domicilios@example.com', password: 'Repartidor123!', rolId: rolRepartidor.id });
+    repartidorDocumento = '500000010';
 
     const loginAdmin = await request(app).post('/api/auth/login').send({ email: 'admin.domicilios@example.com', password: 'Admin123!' });
     adminToken = loginAdmin.body.data.token;
     const loginCliente = await request(app).post('/api/auth/login').send({ email: 'cliente.domicilios@example.com', password: 'Cliente123!' });
     clienteToken = loginCliente.body.data.token;
+    const loginRepartidor = await request(app).post('/api/auth/login').send({ email: 'repartidor.domicilios@example.com', password: 'Repartidor123!' });
+    repartidorToken = loginRepartidor.body.data.token;
   });
 
   afterAll(async () => {
@@ -141,5 +148,83 @@ describe('Domicilios API', () => {
       .send({ estado: 'entregado' }); // desde Pendiente, sin pasar por asignado/en_camino
 
     expect(res.status).toBe(400);
+  });
+
+  describe('Vista del repartidor (mis-domicilios / estado-repartidor)', () => {
+    // findAllPorRepartidor y findAllPorPedidosConUsuario incluían Pedido/
+    // Usuario sin el alias 'pedido'/'usuario' que exige la asociación (ver
+    // models/index.js) — Sequelize lanzaba "... is associated using an
+    // alias" y el endpoint nunca llegaba a responder; nadie lo notó porque
+    // el frontend nunca lo llamó. Estas pruebas fijan el comportamiento
+    // correcto para que no se vuelva a romper en silencio.
+    test('GET /mis-domicilios devuelve solo los domicilios asignados a ese repartidor, con el pedido y su usuario incluidos', async () => {
+      const pedido = await crearPedidoDomicilio();
+      const domicilios = await request(app).get('/api/domicilios').set('Authorization', `Bearer ${adminToken}`).query({ pedido: pedido.id });
+      const domicilioId = domicilios.body.data[0].id;
+
+      await request(app)
+        .patch(`/api/domicilios/${domicilioId}/repartidor`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ repartidorId: repartidorDocumento, nombre: 'Repartidor', telefono: '3000000000' });
+
+      const res = await request(app).get('/api/domicilios/mis-domicilios').set('Authorization', `Bearer ${repartidorToken}`);
+      expect(res.status).toBe(200);
+      expect(res.body.data.some((d) => d.id === domicilioId)).toBe(true);
+      const propio = res.body.data.find((d) => d.id === domicilioId);
+      expect(propio.pedido.id).toBe(pedido.id);
+      expect(propio.pedido.usuario.documento).toBe('500000002');
+
+      // Otro usuario sin domicilios asignados no ve nada.
+      const vacio = await request(app).get('/api/domicilios/mis-domicilios').set('Authorization', `Bearer ${clienteToken}`);
+      expect(vacio.status).toBe(200);
+      expect(vacio.body.data.length).toBe(0);
+    });
+
+    test('el repartidor puede avanzar el estado de SU propio domicilio (asignado -> en_camino -> entregado)', async () => {
+      const pedido = await crearPedidoDomicilio();
+      const domicilios = await request(app).get('/api/domicilios').set('Authorization', `Bearer ${adminToken}`).query({ pedido: pedido.id });
+      const domicilioId = domicilios.body.data[0].id;
+
+      await request(app)
+        .patch(`/api/domicilios/${domicilioId}/repartidor`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ repartidorId: repartidorDocumento, nombre: 'Repartidor', telefono: '3000000000' });
+
+      const enCamino = await request(app)
+        .patch(`/api/domicilios/${domicilioId}/estado-repartidor`)
+        .set('Authorization', `Bearer ${repartidorToken}`)
+        .send({ estado: 'en_camino' });
+      expect(enCamino.status).toBe(200);
+      expect(enCamino.body.data.estado).toBe('en_camino');
+
+      const entregado = await request(app)
+        .patch(`/api/domicilios/${domicilioId}/estado-repartidor`)
+        .set('Authorization', `Bearer ${repartidorToken}`)
+        .send({ estado: 'entregado' });
+      expect(entregado.status).toBe(200);
+      expect(entregado.body.data.estado).toBe('entregado');
+    });
+
+    test('un repartidor no puede cambiar el estado del domicilio de OTRO repartidor', async () => {
+      const rolRepartidor = await Rol.findOne({ where: { nombre: 'DOMICILIARIO' } });
+      await Usuario.create({ documento: '500000011', nombre: 'OtroRepartidor', email: 'otro.repartidor@example.com', password: 'Repartidor123!', rolId: rolRepartidor.id });
+      const loginOtro = await request(app).post('/api/auth/login').send({ email: 'otro.repartidor@example.com', password: 'Repartidor123!' });
+      const otroToken = loginOtro.body.data.token;
+
+      const pedido = await crearPedidoDomicilio();
+      const domicilios = await request(app).get('/api/domicilios').set('Authorization', `Bearer ${adminToken}`).query({ pedido: pedido.id });
+      const domicilioId = domicilios.body.data[0].id;
+
+      await request(app)
+        .patch(`/api/domicilios/${domicilioId}/repartidor`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ repartidorId: repartidorDocumento, nombre: 'Repartidor', telefono: '3000000000' });
+
+      const res = await request(app)
+        .patch(`/api/domicilios/${domicilioId}/estado-repartidor`)
+        .set('Authorization', `Bearer ${otroToken}`)
+        .send({ estado: 'en_camino' });
+      expect(res.status).toBe(403);
+    });
   });
 });
