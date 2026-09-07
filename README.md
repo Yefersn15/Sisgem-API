@@ -112,7 +112,8 @@ Al arrancar, `src/server.js` solo verifica la conexión a PostgreSQL y levanta e
 src/
 ├── app.js               # Configuración de Express: CORS, JSON, montaje de rutas, manejo de errores
 ├── server.js             # Punto de entrada: conexión a BD y arranque del servidor
-├── api/<recurso>/         # Un módulo por entidad: <recurso>.routes.js -> .controller.js -> .service.js -> .repository.js (+ .validator.js)
+├── api/<recurso>/         # Un módulo por entidad, cada uno con sus propios .routes.js -> .controller.js -> .service.js -> .repository.js (+ .validator.js)
+│                          #   (domicilios además separa domicilios.liquidacion.js y domicilios.repartidor.js del service principal)
 ├── config/
 │   ├── database.js       # Instancia de Sequelize (conexión PostgreSQL)
 │   └── cloudinary.js     # Configuración del SDK de Cloudinary
@@ -127,7 +128,9 @@ db/
 └── init.sql               # Creación manual de la BD, alternativa a `npm run db:init` (opcional)
 ```
 
-No existen actualmente directorios `src/services/` ni `src/validators/`; la lógica de negocio y las validaciones básicas viven directamente en los controladores.
+No hay una carpeta compartida `src/services/` ni `src/validators/` a nivel raíz: cada módulo de `src/api/<recurso>/` trae su propio `<recurso>.service.js` y `<recurso>.validator.js` junto al resto de sus capas.
+
+Los módulos no son totalmente independientes entre sí: `domicilios.service.js` importa `pagos.service.js` para generar el pago contraentrega al marcar un domicilio como "entregado" (y descontar el stock vendido). Es una dependencia real del negocio (entregar genera un pago), no accidental, así que se mantiene tal cual — es también la razón por la que ese es el servicio más grande del backend, incluso después de separar `domicilios.liquidacion.js` (liquidación del pago + descuento de stock) y `domicilios.repartidor.js` (asignación de repartidor) del `domicilios.service.js` principal.
 
 ## Modelo de datos (entidades principales)
 
@@ -337,11 +340,11 @@ Todas las rutas requieren autenticación (el carrito se asocia al usuario loguea
 
 ## Subida de imágenes (Cloudinary)
 
-El módulo `upload` (`src/controllers/upload.controller.js`) sube archivos a Cloudinary usando `multer` en memoria y `cloudinary.uploader.upload_stream`. Cada imagen se guarda bajo el prefijo `sisgem/<folder>` (carpeta por defecto `general`, validada con una expresión regular), se redimensiona a un ancho máximo configurable (200–2000px, por defecto 1600px) y se sirve con `quality: auto` y `fetch_format: auto` para optimizar peso. Este mismo mecanismo de Cloudinary es el que respalda las imágenes de productos, marcas y banners en el resto de la API.
+El módulo `upload` (`src/api/upload/upload.controller.js`) sube archivos a Cloudinary usando `multer` en memoria y `cloudinary.uploader.upload_stream`. Cada imagen se guarda bajo el prefijo `sisgem/<folder>` (carpeta por defecto `general`, validada con una expresión regular), se redimensiona a un ancho máximo configurable (200–2000px, por defecto 1600px) y se sirve con `quality: auto` y `fetch_format: auto` para optimizar peso. Este mismo mecanismo de Cloudinary es el que respalda las imágenes de productos, marcas y banners en el resto de la API.
 
 ## Recuperación de contraseña
 
-Flujo de `POST /api/auth/forgot-password` y `POST /api/auth/reset-password` (`src/controllers/auth.controller.js`):
+Flujo de `POST /api/auth/forgot-password` y `POST /api/auth/reset-password` (`src/api/auth/auth.controller.js`):
 
 1. El usuario envía su email a `forgot-password`. El endpoint **siempre responde el mismo mensaje genérico** ("Si el correo está registrado, se ha enviado un enlace de recuperación a esa dirección"), exista o no una cuenta con ese email, y con el mismo código 200. Esto evita que el endpoint se use para averiguar qué correos están registrados en el sistema (enumeración de usuarios).
 2. Si el email sí corresponde a un usuario, el backend genera un JWT de un solo propósito (`type: 'password-reset'`, expira en 1 hora) y lo envía **solo por correo**, dentro de un enlace `FRONTEND_URL/reset-password?token=<token>`. El token nunca se devuelve en la respuesta HTTP.
@@ -354,15 +357,16 @@ Usando la librería `xlsx`, los módulos de **categorías**, **marcas** y **prod
 
 ## Usuario administrador por defecto
 
-Cada vez que arranca el servidor (`src/server.js`), se asegura la existencia de un usuario administrador. Si no existe, se crea; si ya existe, se actualiza su rol, estado y contraseña a los valores por defecto:
+No hay ningún usuario administrador con credenciales fijas: `src/server.js` (24 líneas) solo verifica la conexión a PostgreSQL y levanta el servidor, sin tocar la tabla de usuarios. El único administrador inicial se crea con:
 
-- Documento: `1000000000`
-- Email: `admin@sisgem.com`
-- Contraseña: `Admin123!`
-- Rol: `ADMIN` (con todos los permisos del sistema)
+```bash
+npm run seed:db
+```
+
+a partir de las variables `ADMIN_*` de tu propio `.env` (ver la tabla de variables de entorno más arriba) — nunca con valores hardcodeados. El script es idempotente: si ya existe un usuario con el correo `ADMIN_EMAIL`, no hace nada.
 
 ## Notas adicionales
 
-- CORS está configurado para aceptar cualquier origen (`origin: '*'`) con métodos `GET, POST, PUT, DELETE, PATCH, OPTIONS`.
-- Las respuestas siguen un formato uniforme (`src/utils/helpers.js`): `{ success, message, data }` en éxito y `{ success: false, message }` en error.
-- Las rutas no reconocidas responden `404` con `{ message: 'Ruta no encontrada' }`; los errores no controlados son capturados por un middleware global que responde `500`.
+- CORS usa una lista blanca de orígenes permitidos (`src/app.js`), construida a partir de `CORS_ORIGINS`/`FRONTEND_URL` más `http://localhost:5173` en desarrollo — no acepta cualquier origen. Las solicitudes sin cabecera `Origin` (curl, apps nativas) siempre se permiten. Métodos habilitados: `GET, POST, PUT, DELETE, PATCH, OPTIONS`.
+- Las respuestas siguen un formato uniforme (`src/utils/helpers.js`): `{ success: true, message, data, status }` en éxito y `{ success: false, message, status }` en error — incluidas la raíz `GET /`, las rutas no reconocidas (`404`) y las que exigen autenticación (`401`).
+- Las rutas no reconocidas responden `404` con `{ success: false, message: 'El recurso solicitado no fue encontrado.', status: 404 }`; los errores no controlados son capturados por un middleware global que responde `500`.

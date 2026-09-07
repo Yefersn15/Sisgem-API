@@ -1,8 +1,9 @@
 // Lógica de negocio y acceso a datos de domicilios. No conoce Express.
-const { Pedido, Pago, Usuario, Producto, sequelize } = require('../../models');
+const { Pedido, Pago, Usuario, sequelize } = require('../../models');
 const repository = require('./domicilios.repository');
 const AppError = require('../../utils/AppError');
 const pagosService = require('../pagos/pagos.service');
+const { descontarStock, liquidarEntregaDePedido } = require('./domicilios.liquidacion');
 
 const TRANSICIONES_DOMICILIO = {
   'Pendiente': ['aprobado', 'cancelado'],
@@ -11,63 +12,6 @@ const TRANSICIONES_DOMICILIO = {
   'en_camino': ['entregado'],
   'entregado': [],
   'cancelado': []
-};
-
-const descontarStock = async (productos, t) => {
-  const lista = Array.isArray(productos) ? productos : [];
-  for (const item of lista) {
-    const producto = await Producto.findByPk(item.producto, { transaction: t });
-    if (producto) {
-      const nuevoStock = producto.stock - item.cantidad;
-      if (nuevoStock < 0) throw new AppError(`Stock insuficiente para producto ${producto.nombre}`, 400);
-      await producto.update({ stock: nuevoStock }, { transaction: t });
-    }
-  }
-};
-
-// Al marcar un domicilio como "entregado": genera el pago contraentrega que
-// corresponda (contado o saldo restante de un abono) y convierte el pedido
-// en venta cuando queda completamente pagado.
-const liquidarEntregaDePedido = async (pedido, t) => {
-  if (!pedido) return;
-
-  if (pedido.metodoPago !== 'Abono' && !pedido.esVenta) {
-    await Pago.create({
-      pedidoId: pedido.id,
-      monto: pedido.total,
-      metodo: 'Contraentrega',
-      estado: 'aplicado',
-      referencia: `Pago contraentrega - ${pedido.metodoPago}`,
-      tipo: 'pago_total'
-    }, { transaction: t });
-    await Pedido.update({
-      esVenta: true,
-      estadoVenta: 'completada',
-      estadoPedido: 'entregado',
-      totalPagado: pedido.total
-    }, { where: { id: pedido.id }, transaction: t });
-  } else if (pedido.metodoPago === 'Abono') {
-    if (!pedido.esVenta) {
-      const saldoPendiente = parseFloat(pedido.total) - (parseFloat(pedido.totalPagado) || 0);
-      if (saldoPendiente > 0) {
-        await Pago.create({
-          pedidoId: pedido.id,
-          monto: saldoPendiente,
-          metodo: 'Contraentrega',
-          estado: 'aplicado',
-          referencia: 'Pago automático al entregar domicilio',
-          tipo: 'pago_total'
-        }, { transaction: t });
-        await pedido.update({ totalPagado: pedido.total, esVenta: true, estadoVenta: 'completada', estadoPedido: 'entregado' }, { transaction: t });
-      } else {
-        await pedido.update({ esVenta: true, estadoVenta: 'completada', estadoPedido: 'entregado' }, { transaction: t });
-      }
-    } else {
-      await pedido.update({ estadoPedido: 'entregado' }, { transaction: t });
-    }
-  } else {
-    await pedido.update({ estadoPedido: 'entregado' }, { transaction: t });
-  }
 };
 
 exports.listar = async ({ estado, pedido, pagination }) => {
@@ -208,73 +152,7 @@ exports.cambiarEstado = async (id, { estado, tarifa_aplicada, forzar }) => {
   }
 };
 
-exports.asignarRepartidor = async (id, data) => {
-  const { repartidor, repartidorId, tarifa, telefono, tipoVehiculo, placa, nombre } = data;
-  const t = await sequelize.transaction();
-
-  try {
-    let domicilio = await repository.findById(id, { transaction: t });
-    if (!domicilio) {
-      domicilio = await repository.findByPedidoId(id, { transaction: t });
-    }
-    if (!domicilio) throw new AppError('Domicilio no encontrado', 404);
-
-    const pedido = await Pedido.findByPk(domicilio.pedidoId, { transaction: t });
-    if (!pedido) throw new AppError('Pedido asociado no encontrado', 404);
-
-    const estadoPedido = String(pedido.estadoPedido || '').toLowerCase();
-    if (estadoPedido === 'pendiente') throw new AppError('No se puede asignar repartidor a un pedido en estado Pendiente', 400);
-    if (['entregado', 'cancelado', 'anulado'].includes(estadoPedido)) {
-      throw new AppError(`No se puede asignar repartidor a un pedido en estado ${pedido.estadoPedido}`, 400);
-    }
-
-    let repartidorObj = { nombre: '', telefono: '', tipoVehiculo: '', placa: '' };
-    if (repartidor && typeof repartidor === 'object') {
-      repartidorObj = { nombre: repartidor.nombre || '', telefono: repartidor.telefono || '', tipoVehiculo: repartidor.tipoVehiculo || '', placa: repartidor.placa || '' };
-    } else if (repartidor && typeof repartidor === 'string') {
-      repartidorObj.nombre = repartidor;
-      repartidorObj.telefono = telefono || '';
-    } else if (nombre) {
-      repartidorObj = { nombre, telefono: telefono || '', tipoVehiculo: tipoVehiculo || '', placa: placa || '' };
-    }
-
-    if (repartidorId) {
-      const user = await Usuario.findByPk(repartidorId, { transaction: t });
-      if (user) {
-        repartidorObj.nombre = `${user.nombre || ''} ${user.apellido || ''}`.trim();
-        repartidorObj.telefono = user.telefono || repartidorObj.telefono;
-        repartidorObj.tipoVehiculo = user.tipoVehiculo || repartidorObj.tipoVehiculo;
-        repartidorObj.placa = user.placa || repartidorObj.placa;
-      }
-    }
-
-    const updateData = { repartidor: repartidorObj, repartidorId: repartidorId || null, fechaAsignacion: new Date() };
-    if (tarifa !== undefined && tarifa !== null) {
-      const tarifaNum = parseFloat(String(tarifa).replace(/[^0-9.-]/g, ''));
-      if (!isNaN(tarifaNum)) {
-        updateData.costo = tarifaNum;
-        updateData.tarifaAplicada = tarifaNum;
-        const nuevoTotal = (parseFloat(pedido.subtotal) || 0) + tarifaNum;
-        await pedido.update({ total: nuevoTotal }, { transaction: t });
-      }
-    }
-
-    await repository.updateById(domicilio.id, updateData, { transaction: t });
-
-    if (['Pendiente', 'aprobado'].includes(domicilio.estado)) {
-      await repository.updateById(domicilio.id, { estado: 'asignado' }, { transaction: t });
-    }
-    if (['Pendiente', 'aprobado'].includes(pedido.estadoPedido)) {
-      await Pedido.update({ estadoPedido: 'asignado' }, { where: { id: domicilio.pedidoId }, transaction: t });
-    }
-
-    await t.commit();
-    return repository.findByIdConPedido(domicilio.id);
-  } catch (error) {
-    await t.rollback();
-    throw error;
-  }
-};
+exports.asignarRepartidor = require('./domicilios.repartidor').asignarRepartidor;
 
 exports.porCliente = async (usuarioId) => {
   const usuarioData = await Usuario.findByPk(usuarioId);

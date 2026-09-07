@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const { Usuario, Rol } = require('../models');
+const { errorResponse } = require('../utils/helpers');
 
 // Para rutas públicas que además quieren distinguir "visitante anónimo" de
 // "staff autenticado" (por ejemplo, para mostrar también los inactivos a
@@ -19,9 +20,9 @@ const optionalAuth = (req, res, next) => {
 
 const verifyToken = (req, res, next) => {
   const token = req.header('Authorization')?.replace('Bearer ', '');
-  
+
   if (!token) {
-    return res.status(401).json({ message: 'Acceso denegado. Token no proporcionado' });
+    return errorResponse(res, 'Se requiere autenticación para acceder a este recurso.', 401);
   }
 
   try {
@@ -29,20 +30,20 @@ const verifyToken = (req, res, next) => {
     req.user = verified;
     next();
   } catch (error) {
-    return res.status(400).json({ message: 'Token inválido' });
+    return errorResponse(res, 'Token inválido o expirado.', 401);
   }
 };
 
 const checkRole = (roles) => {
   return async (req, res, next) => {
     if (!req.user) {
-      return res.status(401).json({ message: 'Acceso denegado. Autentícate primero' });
+      return errorResponse(res, 'Se requiere autenticación para acceder a este recurso.', 401);
     }
 
     // Use role from JWT token (set at login)
     const userRole = req.user.rol;
     if (!userRole) {
-      return res.status(403).json({ message: 'Usuario o rol no encontrado' });
+      return errorResponse(res, 'Usuario o rol no encontrado', 403);
     }
 
     // ADMIN/ADMINISTRADOR always allowed
@@ -55,23 +56,23 @@ const checkRole = (roles) => {
       return next();
     }
 
-    return res.status(403).json({ message: 'No tienes permiso para realizar esta acción' });
+    return errorResponse(res, 'No tienes permiso para realizar esta acción', 403);
   };
 };
 
 const checkPermission = (permission) => {
   return async (req, res, next) => {
     if (!req.user) {
-      return res.status(401).json({ message: 'Acceso denegado. Autentícate primero' });
+      return errorResponse(res, 'Se requiere autenticación para acceder a este recurso.', 401);
     }
 
     try {
       const usuario = await Usuario.findByPk(req.user.documento, {
         include: [{ model: Rol, as: 'rol' }]
       });
-      
+
       if (!usuario || !usuario.rol) {
-        return res.status(403).json({ message: 'Usuario o rol no encontrado' });
+        return errorResponse(res, 'Usuario o rol no encontrado', 403);
       }
 
       if (usuario.rol.nombre === 'ADMIN' || usuario.rol.nombre === 'ADMINISTRADOR') {
@@ -79,18 +80,15 @@ const checkPermission = (permission) => {
       }
 
       const permisos = usuario.rol.permisos || [];
-      
+
       if (!permisos.includes(permission)) {
-        return res.status(403).json({ 
-          message: `No tienes permiso para realizar esta acción. Se requiere: ${permission}`,
-          permiso_requerido: permission
-        });
+        return errorResponse(res, `No tienes permiso para realizar esta acción. Se requiere: ${permission}`, 403);
       }
 
       next();
     } catch (error) {
       console.error('Error en checkPermission:', error);
-      return res.status(500).json({ message: 'Error al verificar permisos' });
+      return errorResponse(res, 'Error al verificar permisos', 500);
     }
   };
 };
@@ -98,7 +96,7 @@ const checkPermission = (permission) => {
 const checkRoleOrPermission = (roles, permission) => {
   return async (req, res, next) => {
     if (!req.user) {
-      return res.status(401).json({ message: 'Acceso denegado. Autentícate primero' });
+      return errorResponse(res, 'Se requiere autenticación para acceder a este recurso.', 401);
     }
 
     if (roles.includes(req.user.rol)) {
@@ -110,40 +108,40 @@ const checkRoleOrPermission = (roles, permission) => {
         const usuario = await Usuario.findByPk(req.user.documento, {
           include: [{ model: Rol, as: 'rol' }]
         });
-        
+
         if (!usuario || !usuario.rol) {
-          return res.status(403).json({ message: 'Usuario o rol no encontrado' });
+          return errorResponse(res, 'Usuario o rol no encontrado', 403);
         }
 
         const permisos = usuario.rol.permisos || [];
-        
+
         if (permisos.includes(permission)) {
           return next();
         }
       } catch (error) {
-        return res.status(500).json({ message: 'Error al verificar permisos' });
+        return errorResponse(res, 'Error al verificar permisos', 500);
       }
     }
 
-    return res.status(403).json({ message: 'No tienes permiso para realizar esta acción' });
+    return errorResponse(res, 'No tienes permiso para realizar esta acción', 403);
   };
 };
 
 // Middleware para permitir que el propio usuario se actualice o admin
 const allowSelfOrAdmin = (req, res, next) => {
   if (!req.user) {
-    return res.status(401).json({ message: 'Acceso denegado. Autentícate primero' });
+    return errorResponse(res, 'Se requiere autenticación para acceder a este recurso.', 401);
   }
-  
+
   const targetDocumento = req.params.id;
   const currentDocumento = req.user.documento;
   const userRol = req.user.rol;
-  
+
   if (userRol === 'ADMIN' || targetDocumento === currentDocumento) {
     return next();
   }
-  
-  return res.status(403).json({ message: 'No autorizado para modificar este usuario' });
+
+  return errorResponse(res, 'No autorizado para modificar este usuario', 403);
 };
 
 module.exports = {

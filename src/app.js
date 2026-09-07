@@ -3,6 +3,8 @@ const cors = require('cors');
 const helmet = require('helmet');
 const multer = require('multer');
 const { apiLimiter } = require('./middlewares/rateLimit');
+const { errorResponse } = require('./utils/helpers');
+const { version } = require('../package.json');
 
 const authRoutes = require('./api/auth/auth.routes');
 const rolesRoutes = require('./api/roles/roles.routes');
@@ -76,29 +78,33 @@ app.use('/api/carrito', carritoRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/configuracion', configuracionRoutes);
 
-// Ruta de prueba
+// Endpoint informativo de la API: mínima divulgación de información a
+// propósito — no lista los recursos internos montados más abajo.
 app.get('/', (req, res) => {
-  res.json({ message: 'API Sisgem PostgreSQL funcionando correctamente' });
+  res.status(200).json({
+    success: true,
+    message: 'API de SISGEM — Sistema de Gestión Mercantil',
+    version,
+    status: 'OK'
+  });
 });
 
-// Manejo de errores 404
+// Manejo de errores 404 — cualquier ruta no reconocida, sin importar el
+// verbo HTTP, responde el mismo formato estandarizado que el resto de la API.
 app.use((req, res) => {
-  res.status(404).json({ message: 'Ruta no encontrada' });
+  errorResponse(res, 'El recurso solicitado no fue encontrado.', 404);
 });
 
 // Middleware de manejo de errores
 app.use((err, req, res, next) => {
   if (err.message === 'Origen no permitido por CORS') {
-    return res.status(403).json({ success: false, message: err.message });
+    return errorResponse(res, err.message, 403);
   }
   console.error('❌ Error global:', err.stack);
-  const body = { message: 'Error interno del servidor' };
   // El detalle del error solo se expone fuera de producción, para no filtrar
   // información interna (rutas de archivos, consultas SQL, etc.) a un cliente.
-  if (process.env.NODE_ENV !== 'production') {
-    body.error = err.message;
-  }
-  res.status(500).json(body);
+  const detalle = process.env.NODE_ENV !== 'production' ? { error: err.message } : {};
+  res.status(500).json({ success: false, message: 'Error interno del servidor', status: 500, ...detalle });
 });
 
 module.exports = app;

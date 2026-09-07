@@ -1,11 +1,14 @@
 // Helpers utilities
 
-// Generar respuesta exitosa
+// Generar respuesta exitosa. `status` va también en el body (además del
+// código HTTP real) para que cualquier respuesta de la API sea consistente
+// consigo misma sin tener que inspeccionar la cabecera.
 const successResponse = (res, data, message = 'Operación exitosa', statusCode = 200) => {
   return res.status(statusCode).json({
     success: true,
     message,
-    data
+    data,
+    status: statusCode
   });
 };
 
@@ -13,18 +16,12 @@ const successResponse = (res, data, message = 'Operación exitosa', statusCode =
 const errorResponse = (res, message = 'Error interno del servidor', statusCode = 500) => {
   return res.status(statusCode).json({
     success: false,
-    message
+    message,
+    status: statusCode
   });
-};
-
-// Validar ObjectId
-const isValidObjectId = (id) => {
-  const mongoose = require('mongoose');
-  return mongoose.Types.ObjectId.isValid(id);
 };
 
 module.exports = {
   successResponse,
-  errorResponse,
-  isValidObjectId
+  errorResponse
 };

@@ -16,7 +16,7 @@ const apiLimiter = rateLimit({
   max: num(process.env.API_RATE_LIMIT_MAX, 300),
   standardHeaders: true,
   legacyHeaders: false,
-  message: { success: false, message: 'Demasiadas solicitudes. Intenta de nuevo en unos minutos.' },
+  message: { success: false, message: 'Demasiadas solicitudes. Intenta de nuevo en unos minutos.', status: 429 },
 });
 
 // Límite estricto para login/registro/recuperación de contraseña, para
@@ -26,7 +26,7 @@ const authLimiter = rateLimit({
   max: num(process.env.AUTH_RATE_LIMIT_MAX, 10),
   standardHeaders: true,
   legacyHeaders: false,
-  message: { success: false, message: 'Demasiados intentos. Intenta de nuevo en unos minutos.' },
+  message: { success: false, message: 'Demasiados intentos. Intenta de nuevo en unos minutos.', status: 429 },
 });
 
 // Evita que un mismo usuario genere registros duplicados presionando
@@ -37,7 +37,7 @@ const createLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: (req) => req.user?.documento || ipKeyGenerator(req.ip),
-  message: { success: false, message: 'Estás enviando solicitudes muy rápido. Espera unos segundos e intenta de nuevo.' },
+  message: { success: false, message: 'Estás enviando solicitudes muy rápido. Espera unos segundos e intenta de nuevo.', status: 429 },
 });
 
 module.exports = { apiLimiter, authLimiter, createLimiter };
