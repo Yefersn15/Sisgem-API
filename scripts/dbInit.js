@@ -27,6 +27,7 @@ const ensureDatabaseExists = async () => {
     user: dbConfig.user,
     password: dbConfig.password,
     database: 'postgres', // BD de mantenimiento: siempre existe, se usa solo para crear la nuestra
+    ssl: process.env.DB_SSL === 'true' ? { require: true, rejectUnauthorized: false } : undefined,
   });
 
   await client.connect();
@@ -56,7 +57,16 @@ const syncTables = async () => {
 
 (async () => {
   try {
-    await ensureDatabaseExists();
+    // En un Postgres administrado (Aiven, Render Postgres, Supabase, etc.)
+    // la base de datos ya viene creada de fábrica y el usuario normalmente
+    // NO tiene permiso para conectarse a la BD de mantenimiento "postgres"
+    // ni para crear otras — por eso este paso no es fatal si falla: se
+    // avisa y se sigue directo a sincronizar tablas contra la BD que ya existe.
+    try {
+      await ensureDatabaseExists();
+    } catch (error) {
+      console.warn('⚠️ No se pudo verificar/crear la base de datos (normal en un Postgres administrado, donde ya viene creada):', error.message);
+    }
     await syncTables();
     process.exit(0);
   } catch (error) {
