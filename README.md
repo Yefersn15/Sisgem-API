@@ -12,7 +12,7 @@ Backend REST de SISGEM (Sistema de Gestión Comercial): una API para una tienda 
 | ORM | Sequelize 6 |
 | Autenticación | JWT (`jsonwebtoken`) + `bcrypt` para hash de contraseñas |
 | Subida de imágenes | Cloudinary (`cloudinary`) vía `multer` (memoria) |
-| Envío de correos | `nodemailer` (SMTP) — recuperación de contraseña |
+| Envío de correos | API HTTP de Brevo — recuperación de contraseña |
 | Importación/Exportación | `xlsx` (Excel) |
 | CORS | `cors` (abierto a cualquier origen) |
 
@@ -22,7 +22,7 @@ Backend REST de SISGEM (Sistema de Gestión Comercial): una API para una tienda 
 - PostgreSQL 14 o superior
 - npm
 - Una cuenta de [Cloudinary](https://cloudinary.com/) (para la subida de imágenes de productos, marcas, banners, etc.)
-- Opcional: credenciales SMTP de un proveedor de correo (Gmail, Outlook, o un servicio transaccional como Brevo/Mailgun/Resend) para que la recuperación de contraseña envíe correos reales. Sin ellas, el enlace de recuperación solo se registra en la consola del servidor.
+- Opcional: una cuenta de [Brevo](https://www.brevo.com/) (API key) para que la recuperación de contraseña envíe correos reales. Sin ella, el enlace de recuperación solo se registra en la consola del servidor.
 
 ## Instalación
 
@@ -34,13 +34,22 @@ Backend REST de SISGEM (Sistema de Gestión Comercial): una API para una tienda 
    ```bash
    npm install
    ```
-   Al finalizar la instalación se ejecuta automáticamente el script `postinstall` (`src/scripts/add-unique-index.js`), que se conecta a la base de datos, limpia domicilios duplicados por pedido y crea un índice único `pedido_id` sobre la tabla `domicilios`. Si la base de datos aún no existe o no está accesible, este paso fallará; puede ejecutarse manualmente más tarde con `node src/scripts/add-unique-index.js`.
-3. Crear una base de datos PostgreSQL (por ejemplo: `sisgem_db`). Opcionalmente se puede usar `database/init.sql` como referencia del esquema inicial (tablas, tipos y relaciones); en tiempo de ejecución la API sincroniza el esquema automáticamente con Sequelize (`sequelize.sync({ alter: true })`), por lo que ejecutar el script SQL no es obligatorio.
-4. Copiar el ejemplo de variables de entorno:
+   Al finalizar la instalación se ejecuta automáticamente el script `postinstall` (`scripts/add-unique-index.js`), que se conecta a la base de datos, limpia domicilios duplicados por pedido y crea un índice único `pedido_id` sobre la tabla `domicilios`. Si la base de datos aún no existe o no está accesible, este paso fallará; puede ejecutarse manualmente más tarde con `node scripts/add-unique-index.js`.
+3. Copiar el ejemplo de variables de entorno:
    ```bash
    copy .env.example .env
    ```
-5. Ajustar los valores de `.env` según tu entorno.
+4. Ajustar los valores de `.env` según tu entorno, incluyendo las variables `ADMIN_*` (ver tabla abajo).
+5. Crear la base de datos y sincronizar las tablas a partir de los modelos de Sequelize:
+   ```bash
+   npm run db:init
+   ```
+   `db/init.sql` es una alternativa manual solo para crear la base de datos (`CREATE DATABASE`); no es necesario ejecutarlo si usas `npm run db:init`.
+6. Crear el usuario administrador inicial:
+   ```bash
+   npm run seed:db
+   ```
+   Es idempotente: si ya existe un usuario con el correo `ADMIN_EMAIL`, no hace nada.
 
 ## Variables de entorno
 
@@ -58,22 +67,34 @@ Backend REST de SISGEM (Sistema de Gestión Comercial): una API para una tienda 
 | `CLOUDINARY_API_KEY` | API Key de Cloudinary |
 | `CLOUDINARY_API_SECRET` | API Secret de Cloudinary |
 | `FRONTEND_URL` | URL del frontend, usada para armar el enlace `/reset-password?token=...` del correo de recuperación (por defecto `http://localhost:5173`) |
-| `SMTP_HOST` | Servidor SMTP del proveedor de correo (ej. `smtp.gmail.com`). Si se deja vacío, los correos no se envían y solo se registran en consola |
-| `SMTP_PORT` | Puerto SMTP: `587` (TLS, por defecto) o `465` (SSL) |
-| `SMTP_SECURE` | `true` si se usa el puerto 465 (SSL), `false` para 587 (TLS) |
-| `SMTP_USER` | Usuario SMTP (en Gmail/Outlook, el correo completo) |
-| `SMTP_PASS` | Contraseña SMTP. **No** es la contraseña normal de la cuenta: en Gmail se genera una "contraseña de aplicación" en [myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords) (requiere verificación en 2 pasos); en servicios transaccionales es la API key/SMTP key de su panel |
-| `MAIL_FROM` | Dirección remitente que verán los destinatarios (debe estar verificada en el proveedor SMTP) |
+| `BREVO_API_KEY` | API key de Brevo (panel de Brevo → SMTP & API → API Keys). Si se deja vacía, los correos no se envían y solo se registran en consola |
+| `MAIL_FROM` | Dirección remitente que verán los destinatarios (debe estar verificada en Brevo: panel → Senders, Domains & Dedicated IPs → Senders) |
+| `ADMIN_DOCUMENTO` | Documento del usuario administrador inicial. Solo usada por `npm run seed:db` |
+| `ADMIN_TIPO_DOCUMENTO` | Tipo de documento del admin (por defecto `CC`). Solo usada por `npm run seed:db` |
+| `ADMIN_EMAIL` | Correo del usuario administrador inicial. Solo usada por `npm run seed:db` |
+| `ADMIN_PASSWORD` | Contraseña del administrador inicial (mínimo 8 caracteres; se hashea con bcrypt). Solo usada por `npm run seed:db` |
+| `ADMIN_NOMBRE` | Nombre del administrador inicial. Solo usada por `npm run seed:db` |
+| `ADMIN_APELLIDO` | Apellido del administrador inicial. Solo usada por `npm run seed:db` |
+| `ADMIN_TELEFONO`, `ADMIN_GENERO`, `ADMIN_DIRECCION`, `ADMIN_BARRIO` | Datos opcionales del administrador inicial. Solo usadas por `npm run seed:db` |
+
+## Scripts disponibles
+
+| Script | Descripción |
+|---|---|
+| `npm start` | Ejecuta `node src/server.js`. No hay script `dev` con recarga automática |
+| `npm run db:init` | Crea la base de datos en Postgres si no existe y sincroniza las tablas a partir de los modelos de Sequelize (`sequelize.sync({ alter: true })`). Se corre una vez al preparar el entorno, no en cada arranque |
+| `npm run seed:db` | Crea el rol `ADMIN` (si falta) y el usuario administrador inicial a partir de las variables `ADMIN_*` de `.env`. Idempotente |
+| `npm test` | No hay pruebas configuradas |
+
+El script `postinstall` (`scripts/add-unique-index.js`, ver arriba) sigue ejecutándose automáticamente tras `npm install`.
 
 ## Ejecución
 
-Iniciar el servidor:
+Iniciar el servidor (después de haber corrido `db:init` y `seed:db` al menos una vez):
 
 ```bash
 npm start
 ```
-
-Actualmente el proyecto **no** define un script `dev` con recarga automática (nodemon o similar); `npm start` ejecuta directamente `node src/server.js`. El único otro script disponible además de `start` es `postinstall` (ver más arriba); `npm test` no tiene pruebas configuradas.
 
 La API quedará disponible en:
 
@@ -83,32 +104,27 @@ http://localhost:3000
 
 Todas las rutas de la API están montadas bajo el prefijo `/api` (por ejemplo `/api/auth`, `/api/productos`). La ruta raíz `GET /` responde un mensaje de estado simple.
 
-Al arrancar, `src/server.js`:
-1. Verifica la conexión a PostgreSQL.
-2. Sincroniza los modelos con la base de datos (`sequelize.sync({ alter: true })`). Si falla, el servidor continúa arrancando igualmente.
-3. Asegura la existencia del rol `ADMIN` (con todos los permisos) y de un usuario administrador por defecto.
+Al arrancar, `src/server.js` solo verifica la conexión a PostgreSQL y levanta el servidor; ya no sincroniza tablas ni crea el usuario admin (eso vive en `db:init`/`seed:db`, ver arriba).
 
 ## Estructura del proyecto
 
 ```
 src/
 ├── app.js               # Configuración de Express: CORS, JSON, montaje de rutas, manejo de errores
-├── server.js             # Punto de entrada: conexión a BD, sync de modelos, usuario admin, arranque del servidor
+├── server.js             # Punto de entrada: conexión a BD y arranque del servidor
+├── api/<recurso>/         # Un módulo por entidad: <recurso>.routes.js -> .controller.js -> .service.js -> .repository.js (+ .validator.js)
 ├── config/
 │   ├── database.js       # Instancia de Sequelize (conexión PostgreSQL)
-│   ├── cloudinary.js     # Configuración del SDK de Cloudinary
-│   └── mailer.js         # Transporter de Nodemailer (SMTP) para el envío de correos
-├── controllers/          # Lógica de negocio de cada módulo (uno por entidad/recurso)
-├── middlewares/
-│   └── auth.js           # verifyToken, checkRole, checkPermission, checkRoleOrPermission, allowSelfOrAdmin
+│   └── cloudinary.js     # Configuración del SDK de Cloudinary
+├── middlewares/           auth.js, rateLimit.js
 ├── models/                # Modelos Sequelize y asociaciones (index.js)
-├── routes/                # Definición de endpoints Express por módulo
-├── scripts/
-│   └── add-unique-index.js  # Script de mantenimiento ejecutado en postinstall
-└── utils/
-    └── helpers.js         # successResponse / errorResponse (formato uniforme de respuestas)
-database/
-└── init.sql               # Esquema SQL de referencia (opcional; la app sincroniza vía Sequelize)
+└── utils/                 AppError.js, helpers.js, pagination.js, sendEmail.js
+scripts/
+├── add-unique-index.js  # Script de mantenimiento ejecutado en postinstall
+├── dbInit.js            # npm run db:init — crea la BD y sincroniza tablas desde los modelos
+└── seedAdmin.js         # npm run seed:db — crea el rol ADMIN y el usuario administrador inicial
+db/
+└── init.sql               # Creación manual de la BD, alternativa a `npm run db:init` (opcional)
 ```
 
 No existen actualmente directorios `src/services/` ni `src/validators/`; la lógica de negocio y las validaciones básicas viven directamente en los controladores.
@@ -329,7 +345,7 @@ Flujo de `POST /api/auth/forgot-password` y `POST /api/auth/reset-password` (`sr
 
 1. El usuario envía su email a `forgot-password`. El endpoint **siempre responde el mismo mensaje genérico** ("Si el correo está registrado, se ha enviado un enlace de recuperación a esa dirección"), exista o no una cuenta con ese email, y con el mismo código 200. Esto evita que el endpoint se use para averiguar qué correos están registrados en el sistema (enumeración de usuarios).
 2. Si el email sí corresponde a un usuario, el backend genera un JWT de un solo propósito (`type: 'password-reset'`, expira en 1 hora) y lo envía **solo por correo**, dentro de un enlace `FRONTEND_URL/reset-password?token=<token>`. El token nunca se devuelve en la respuesta HTTP.
-3. El envío de correo se hace con `nodemailer` (`src/config/mailer.js`). Si no hay credenciales `SMTP_*` configuradas, el correo no se envía y solo se registra una advertencia en consola (para poder probar el flujo en desarrollo sin SMTP real).
+3. El envío de correo se hace vía la API HTTP de Brevo (`src/utils/sendEmail.js`). Si no hay `BREVO_API_KEY`/`MAIL_FROM` configuradas, el correo no se envía y solo se registra una advertencia en consola (para poder probar el flujo en desarrollo sin Brevo real).
 4. El frontend llama a `reset-password` con el `token` del enlace y la nueva contraseña. El backend verifica la firma y el tipo del token, valida que la contraseña tenga al menos 6 caracteres, y actualiza la contraseña del usuario (rehasheada por el hook `beforeUpdate` del modelo `Usuario`).
 
 ## Exportación / Importación en Excel

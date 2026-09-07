@@ -74,6 +74,24 @@ exports.productosMasVendidos = async (limit = 10) => {
     .slice(0, parseInt(limit));
 };
 
+// Usadas por el banner de contenido "populares por marca/categoría": mismo
+// ranking de productosMasVendidos, filtrado a los productos de esa marca o
+// categoría. No se recalcula el conteo desde cero para no duplicar la lógica
+// de agregación sobre pedidos.
+exports.productosMasVendidosPorMarca = async (marcaId, limit = 10) => {
+  const productosDeMarca = await Producto.findAll({ where: { marcaId }, attributes: ['id'] });
+  const idsPermitidos = new Set(productosDeMarca.map((p) => String(p.id)));
+  const ranking = await exports.productosMasVendidos(9999);
+  return ranking.filter((p) => idsPermitidos.has(String(p.productoId))).slice(0, parseInt(limit));
+};
+
+exports.productosMasVendidosPorCategoria = async (categoriaId, limit = 10) => {
+  const productosDeCategoria = await Producto.findAll({ where: { categoriaId }, attributes: ['id'] });
+  const idsPermitidos = new Set(productosDeCategoria.map((p) => String(p.id)));
+  const ranking = await exports.productosMasVendidos(9999);
+  return ranking.filter((p) => idsPermitidos.has(String(p.productoId))).slice(0, parseInt(limit));
+};
+
 exports.stockBajo = async () => {
   return Producto.findAll({
     where: {

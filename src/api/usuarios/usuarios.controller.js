@@ -48,7 +48,7 @@ exports.verDetalle = async (req, res) => {
 
 exports.actualizar = async (req, res) => {
   try {
-    const usuario = await service.actualizar(req.params.id, req.body);
+    const usuario = await service.actualizar(req.params.id, req.body, req.user);
     return successResponse(res, usuario, 'Usuario actualizado exitosamente');
   } catch (error) {
     return handleError(res, error);

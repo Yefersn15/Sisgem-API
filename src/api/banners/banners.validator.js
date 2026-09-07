@@ -9,6 +9,8 @@ const { errorResponse } = require('../../utils/helpers');
 const crearSchema = z.object({
   layout: z.string().optional(),
   images: z.array(z.any()).optional(),
+  contentType: z.enum(['imagenes', 'productos', 'marcas', 'populares_marca', 'populares_categoria']).optional(),
+  contentRefs: z.union([z.array(z.any()), z.object({ refId: z.any(), limit: z.coerce.number().int().optional() })]).optional().nullable(),
   titulo: z.string().optional(),
   texto: z.string().optional(),
   textPosition: z.string().optional(),

@@ -8,6 +8,7 @@ const Pedido = require('./Pedido');
 const Pago = require('./Pago');
 const Domicilio = require('./Domicilio');
 const Banner = require('./Banner');
+const Configuracion = require('./Configuracion');
 
 Categoria.hasMany(Producto, { foreignKey: 'categoriaId', as: 'productos' });
 Producto.belongsTo(Categoria, { foreignKey: 'categoriaId', as: 'categoria' });
@@ -37,5 +38,6 @@ module.exports = {
   Pedido,
   Pago,
   Domicilio,
-  Banner
+  Banner,
+  Configuracion
 };

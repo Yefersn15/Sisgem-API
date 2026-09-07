@@ -17,7 +17,25 @@ const Banner = sequelize.define('Banner', {
     type: DataTypes.JSONB,
     allowNull: false,
     defaultValue: []
-    // [{ slot: number, url: string }] - una entrada por cada casilla de la plantilla
+    // [{ slot: number, url: string }] - una entrada por cada casilla de la plantilla.
+    // Solo se usa (y se guarda a mano) cuando contentType = 'imagenes'; para los
+    // demás tipos, banners.service.js la reconstruye en cada lectura a partir de
+    // contentRefs y no depende de lo guardado aquí.
+  },
+  contentType: {
+    type: DataTypes.STRING(30),
+    allowNull: false,
+    defaultValue: 'imagenes',
+    field: 'content_type'
+    // imagenes | productos | marcas | populares_marca | populares_categoria
+  },
+  contentRefs: {
+    type: DataTypes.JSONB,
+    allowNull: true,
+    field: 'content_refs'
+    // productos/marcas: [id, id, ...] en el orden en que caen en cada casilla.
+    // populares_marca/populares_categoria: { refId: <marcaId|categoriaId> } —
+    // el límite de items lo da el número de casillas de la plantilla elegida.
   },
   titulo: {
     type: DataTypes.STRING(200),

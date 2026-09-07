@@ -63,6 +63,16 @@ const Usuario = sequelize.define('Usuario', {
     type: DataTypes.INTEGER,
     allowNull: true,
     field: 'rol_id'
+  },
+  esAdminPrincipal: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: false,
+    field: 'es_admin_principal'
+    // true solo para la cuenta creada por `npm run seed:db` a partir de
+    // ADMIN_EMAIL. Bloqueada en usuarios.service.js: nadie (ni ella misma)
+    // puede cambiarle el rol, desactivarla, eliminarla ni cambiarle la
+    // contraseña desde la aplicación — solo desde el servidor.
   }
 }, {
   tableName: 'usuarios',

@@ -3,7 +3,21 @@ const cors = require('cors');
 const helmet = require('helmet');
 const multer = require('multer');
 const { apiLimiter } = require('./middlewares/rateLimit');
-const apiRoutes = require('./routes');
+
+const authRoutes = require('./api/auth/auth.routes');
+const rolesRoutes = require('./api/roles/roles.routes');
+const usuariosRoutes = require('./api/usuarios/usuarios.routes');
+const categoriasRoutes = require('./api/categorias/categorias.routes');
+const marcasRoutes = require('./api/marcas/marcas.routes');
+const productosRoutes = require('./api/productos/productos.routes');
+const pedidosRoutes = require('./api/pedidos/pedidos.routes');
+const pagosRoutes = require('./api/pagos/pagos.routes');
+const domiciliosRoutes = require('./api/domicilios/domicilios.routes');
+const dashboardRoutes = require('./api/dashboard/dashboard.routes');
+const bannersRoutes = require('./api/banners/banners.routes');
+const carritoRoutes = require('./api/carrito/carrito.routes');
+const uploadRoutes = require('./api/upload/upload.routes');
+const configuracionRoutes = require('./api/configuracion/configuracion.routes');
 
 // Configuración de multer para uploads de archivos en memoria
 const storage = multer.memoryStorage();
@@ -47,7 +61,20 @@ app.use((req, res, next) => {
 });
 
 // Rutas de la API
-app.use('/api', apiRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/roles', rolesRoutes);
+app.use('/api/usuarios', usuariosRoutes);
+app.use('/api/categorias', categoriasRoutes);
+app.use('/api/marcas', marcasRoutes);
+app.use('/api/productos', productosRoutes);
+app.use('/api/pedidos', pedidosRoutes);
+app.use('/api/pagos', pagosRoutes);
+app.use('/api/domicilios', domiciliosRoutes);
+app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/banners', bannersRoutes);
+app.use('/api/carrito', carritoRoutes);
+app.use('/api/upload', uploadRoutes);
+app.use('/api/configuracion', configuracionRoutes);
 
 // Ruta de prueba
 app.get('/', (req, res) => {

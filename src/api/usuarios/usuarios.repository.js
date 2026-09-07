@@ -29,7 +29,7 @@ exports.findByDocumentoConRolSinPassword = (documento) =>
   Usuario.findOne({ where: { documento }, include: includeRol, attributes: sinPassword });
 
 exports.findByIdConRolNombreSinPassword = (id) =>
-  Usuario.findByPk(id, { include: [{ model: Rol, attributes: ['nombre'] }], attributes: sinPassword });
+  Usuario.findByPk(id, { include: [{ model: Rol, attributes: ['nombre'], as: 'rol' }], attributes: sinPassword });
 
 exports.findByIdSoloDirecciones = (documento) =>
   Usuario.findByPk(documento, { attributes: ['direcciones'] });

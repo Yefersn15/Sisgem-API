@@ -15,4 +15,5 @@ Thumbs.db
 nul
 build/
 .dist/
+tests/
 *.tsbuildinfo

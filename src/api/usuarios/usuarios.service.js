@@ -68,11 +68,24 @@ exports.obtenerPorId = async (id) => {
   return usuario;
 };
 
-exports.actualizar = async (id, data) => {
-  const { nombre, apellido, telefono, rolId, email, tipoDocumento, genero, direccion, barrio, estado } = data;
+// `requester`: viene de req.user (el usuario autenticado que hace la
+// petición). La cuenta esAdminPrincipal (creada por npm run seed:db) no
+// puede ser tocada por nadie más, y ni ella misma puede cambiarse el rol,
+// el estado o la contraseña desde la aplicación — solo datos de contacto.
+exports.actualizar = async (id, data, requester) => {
+  const { nombre, apellido, telefono, rolId, email, tipoDocumento, genero, direccion, barrio, estado, password } = data;
 
   const usuario = await repository.findById(id);
   if (!usuario) throw new AppError('Usuario no encontrado', 404);
+
+  if (usuario.esAdminPrincipal) {
+    if (requester && String(requester.documento) !== String(usuario.documento)) {
+      throw new AppError('La cuenta del administrador principal no puede ser modificada por otro usuario.', 403);
+    }
+    if (rolId !== undefined || estado !== undefined || password) {
+      throw new AppError('La cuenta del administrador principal no puede cambiar de rol, desactivarse ni cambiar su contraseña desde la aplicación. Usa "npm run seed:db" en el servidor.', 403);
+    }
+  }
 
   if (email && email !== usuario.email) {
     const existeEmail = await repository.findByEmail(email);
@@ -98,12 +111,18 @@ exports.actualizar = async (id, data) => {
 exports.eliminar = async (id) => {
   const usuario = await repository.findById(id);
   if (!usuario) throw new AppError('Usuario no encontrado', 404);
+  if (usuario.esAdminPrincipal) {
+    throw new AppError('La cuenta del administrador principal no se puede eliminar.', 403);
+  }
   await usuario.destroy();
 };
 
 exports.cambiarEstado = async (id, estado) => {
   const usuario = await repository.findByIdConRolNombreSinPassword(id);
   if (!usuario) throw new AppError('Usuario no encontrado', 404);
+  if (usuario.esAdminPrincipal) {
+    throw new AppError('La cuenta del administrador principal no se puede desactivar.', 403);
+  }
   await usuario.update({ estado });
   return usuario;
 };

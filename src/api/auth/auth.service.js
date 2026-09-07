@@ -1,7 +1,7 @@
 // Lógica de negocio de autenticación. No conoce Express.
 const jwt = require('jsonwebtoken');
 const repository = require('./auth.repository');
-const { sendMail } = require('../../config/mailer');
+const sendEmail = require('../../utils/sendEmail');
 const AppError = require('../../utils/AppError');
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -137,6 +137,10 @@ exports.changePassword = async (documento, { currentPassword, password }) => {
     throw new AppError('Usuario no encontrado', 404);
   }
 
+  if (usuario.esAdminPrincipal) {
+    throw new AppError('La cuenta del administrador principal no puede cambiar su contraseña desde la aplicación. Usa "npm run seed:db" en el servidor.', 403);
+  }
+
   const match = await usuario.comparePassword(currentPassword);
   if (!match) {
     throw new AppError('La contraseña actual es incorrecta', 400);
@@ -157,13 +161,16 @@ exports.forgotPassword = async (email) => {
 
   const usuario = await repository.findUsuarioByEmail(email);
 
-  if (usuario) {
+  // Igual que "el correo no existe": la cuenta del administrador principal
+  // no puede restablecer su contraseña por este medio, así que ni se le
+  // envía el correo (misma respuesta genérica, para no revelar que existe).
+  if (usuario && !usuario.esAdminPrincipal) {
     const resetToken = jwt.sign({ documento: usuario.documento, type: 'password-reset' }, process.env.JWT_SECRET, { expiresIn: '1h' });
     const frontendUrl = (process.env.FRONTEND_URL || 'http://localhost:5173').replace(/\/$/, '');
     const resetLink = `${frontendUrl}/reset-password?token=${resetToken}`;
 
     try {
-      await sendMail({
+      await sendEmail({
         to: usuario.email,
         subject: 'Recuperación de contraseña - SISGEM',
         html: `
@@ -204,6 +211,10 @@ exports.resetPassword = async ({ token, password }) => {
   const usuario = await repository.findUsuarioById(decoded.documento);
   if (!usuario) {
     throw new AppError('Usuario no encontrado', 404);
+  }
+
+  if (usuario.esAdminPrincipal) {
+    throw new AppError('La cuenta del administrador principal no puede restablecer su contraseña por este medio.', 403);
   }
 
   usuario.password = password;
