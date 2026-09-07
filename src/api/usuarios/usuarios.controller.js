@@ -57,7 +57,7 @@ exports.actualizar = async (req, res) => {
 
 exports.eliminar = async (req, res) => {
   try {
-    await service.eliminar(req.params.id);
+    await service.eliminar(req.params.id, req.user);
     return successResponse(res, null, 'Usuario eliminado exitosamente');
   } catch (error) {
     return handleError(res, error);
@@ -66,7 +66,7 @@ exports.eliminar = async (req, res) => {
 
 exports.cambiarEstado = async (req, res) => {
   try {
-    const usuario = await service.cambiarEstado(req.params.id, req.body.estado);
+    const usuario = await service.cambiarEstado(req.params.id, req.body.estado, req.user);
     return successResponse(res, usuario, 'Estado actualizado exitosamente');
   } catch (error) {
     return handleError(res, error);

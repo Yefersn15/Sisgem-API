@@ -6,6 +6,17 @@ const repository = require('./usuarios.repository');
 const { Rol } = require('../../models');
 const AppError = require('../../utils/AppError');
 
+const esNombreAdmin = (nombreRol) => nombreRol === 'ADMIN' || nombreRol === 'ADMINISTRADOR';
+
+// Ver si quien hace la petición es el admin principal (no viene en el JWT,
+// hay que consultarlo) — es el único que puede tocar la cuenta de otro
+// admin (ver actualizar/eliminar/cambiarEstado más abajo).
+const requesterEsAdminPrincipal = async (requester) => {
+  if (!requester) return false;
+  const requesterUsuario = await repository.findById(requester.documento);
+  return Boolean(requesterUsuario?.esAdminPrincipal);
+};
+
 exports.listar = async ({ estado, rol, search, pagination }) => {
   const where = {};
   if (estado !== undefined) where.estado = estado === 'true';
@@ -70,21 +81,45 @@ exports.obtenerPorId = async (id) => {
 };
 
 // `requester`: viene de req.user (el usuario autenticado que hace la
-// petición). La cuenta esAdminPrincipal (creada por npm run seed:db) no
-// puede ser tocada por nadie más, y ni ella misma puede cambiarse el rol,
-// el estado o la contraseña desde la aplicación — solo datos de contacto.
+// petición). Tres reglas de protección, en orden de más a menos estricta:
+// 1. La cuenta esAdminPrincipal (creada por npm run seed:db) no puede ser
+//    tocada por nadie más, y ni ella misma puede cambiarse el rol, el
+//    estado o la contraseña desde la aplicación — solo datos de contacto.
+// 2. Nadie (ni un admin) puede cambiar su propio rol ni desactivar su
+//    propia cuenta — evita una auto-escalación de permisos o un
+//    autobloqueo accidental.
+// 3. Un admin normal no puede modificar la cuenta de OTRO admin (ni su rol,
+//    ni su estado, ni ningún otro dato) — esa cuenta solo la puede tocar el
+//    admin principal.
 exports.actualizar = async (id, data, requester) => {
   const { nombre, apellido, telefono, rolId, email, tipoDocumento, genero, direccion, barrio, estado, password, fotoUrl } = data;
 
-  const usuario = await repository.findById(id);
+  const usuario = await repository.findByIdConRolNombreSinPassword(id);
   if (!usuario) throw new AppError('Usuario no encontrado', 404);
 
+  const esSelfEdit = Boolean(requester) && String(requester.documento) === String(usuario.documento);
+
   if (usuario.esAdminPrincipal) {
-    if (requester && String(requester.documento) !== String(usuario.documento)) {
+    if (requester && !esSelfEdit) {
       throw new AppError('La cuenta del administrador principal no puede ser modificada por otro usuario.', 403);
     }
     if (rolId !== undefined || estado !== undefined || password) {
       throw new AppError('La cuenta del administrador principal no puede cambiar de rol, desactivarse ni cambiar su contraseña desde la aplicación. Usa "npm run seed:db" en el servidor.', 403);
+    }
+  } else {
+    const cambiaRol = rolId !== undefined && rolId !== '' && String(rolId) !== String(usuario.rolId);
+    const cambiaEstado = estado !== undefined && Boolean(estado) !== Boolean(usuario.estado);
+
+    if (esSelfEdit && cambiaRol) {
+      throw new AppError('No puedes cambiar tu propio rol.', 403);
+    }
+    if (esSelfEdit && cambiaEstado) {
+      throw new AppError('No puedes activar o desactivar tu propia cuenta.', 403);
+    }
+
+    const targetEsAdmin = usuario.rol && esNombreAdmin(usuario.rol.nombre);
+    if (targetEsAdmin && requester && !esSelfEdit && !(await requesterEsAdminPrincipal(requester))) {
+      throw new AppError('Solo el administrador principal puede modificar la cuenta de otro administrador.', 403);
     }
   }
 
@@ -110,20 +145,34 @@ exports.actualizar = async (id, data, requester) => {
   return repository.findByIdConRolSinPassword(usuario.documento);
 };
 
-exports.eliminar = async (id) => {
-  const usuario = await repository.findById(id);
+exports.eliminar = async (id, requester) => {
+  const usuario = await repository.findByIdConRolNombreSinPassword(id);
   if (!usuario) throw new AppError('Usuario no encontrado', 404);
   if (usuario.esAdminPrincipal) {
     throw new AppError('La cuenta del administrador principal no se puede eliminar.', 403);
   }
+  if (requester && String(requester.documento) === String(usuario.documento)) {
+    throw new AppError('No puedes eliminar tu propia cuenta.', 403);
+  }
+  const targetEsAdmin = usuario.rol && esNombreAdmin(usuario.rol.nombre);
+  if (targetEsAdmin && requester && !(await requesterEsAdminPrincipal(requester))) {
+    throw new AppError('Solo el administrador principal puede eliminar la cuenta de otro administrador.', 403);
+  }
   await usuario.destroy();
 };
 
-exports.cambiarEstado = async (id, estado) => {
+exports.cambiarEstado = async (id, estado, requester) => {
   const usuario = await repository.findByIdConRolNombreSinPassword(id);
   if (!usuario) throw new AppError('Usuario no encontrado', 404);
   if (usuario.esAdminPrincipal) {
     throw new AppError('La cuenta del administrador principal no se puede desactivar.', 403);
+  }
+  if (requester && String(requester.documento) === String(usuario.documento)) {
+    throw new AppError('No puedes activar o desactivar tu propia cuenta.', 403);
+  }
+  const targetEsAdmin = usuario.rol && esNombreAdmin(usuario.rol.nombre);
+  if (targetEsAdmin && requester && !(await requesterEsAdminPrincipal(requester))) {
+    throw new AppError('Solo el administrador principal puede cambiar el estado de otro administrador.', 403);
   }
   await usuario.update({ estado });
   return usuario;

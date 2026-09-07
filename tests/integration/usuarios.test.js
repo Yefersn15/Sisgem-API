@@ -6,21 +6,33 @@ describe('Usuarios API', () => {
   let adminToken;
   let clienteToken;
   let clienteDocumento;
+  let admin2Token;
+  let admin2Documento;
+  let principalToken;
+  let rolClienteId;
 
   beforeAll(async () => {
     await sequelize.sync({ force: true });
 
     const rolAdmin = await Rol.create({ nombre: 'ADMIN', permisos: [], estado: true });
     const rolCliente = await Rol.create({ nombre: 'CLIENTE', permisos: [], estado: true });
+    rolClienteId = rolCliente.id;
 
     await Usuario.create({ documento: '400000001', nombre: 'Admin', email: 'admin.usuarios@example.com', password: 'Admin123!', rolId: rolAdmin.id });
     await Usuario.create({ documento: '400000002', nombre: 'Cliente', email: 'cliente.usuarios@example.com', password: 'Cliente123!', rolId: rolCliente.id });
+    await Usuario.create({ documento: '400000003', nombre: 'Admin2', email: 'admin2.usuarios@example.com', password: 'Admin123!', rolId: rolAdmin.id });
+    await Usuario.create({ documento: '400000004', nombre: 'Principal', email: 'principal.usuarios@example.com', password: 'Admin123!', rolId: rolAdmin.id, esAdminPrincipal: true });
     clienteDocumento = '400000002';
+    admin2Documento = '400000003';
 
     const loginAdmin = await request(app).post('/api/auth/login').send({ email: 'admin.usuarios@example.com', password: 'Admin123!' });
     adminToken = loginAdmin.body.data.token;
     const loginCliente = await request(app).post('/api/auth/login').send({ email: 'cliente.usuarios@example.com', password: 'Cliente123!' });
     clienteToken = loginCliente.body.data.token;
+    const loginAdmin2 = await request(app).post('/api/auth/login').send({ email: 'admin2.usuarios@example.com', password: 'Admin123!' });
+    admin2Token = loginAdmin2.body.data.token;
+    const loginPrincipal = await request(app).post('/api/auth/login').send({ email: 'principal.usuarios@example.com', password: 'Admin123!' });
+    principalToken = loginPrincipal.body.data.token;
   });
 
   afterAll(async () => {
@@ -89,5 +101,76 @@ describe('Usuarios API', () => {
 
     expect(res.status).toBe(400);
     expect(res.body.message).toMatch(/máximo 3/i);
+  });
+
+  describe('Protecciones entre administradores', () => {
+    test('un admin no puede cambiar su propio rol', async () => {
+      const res = await request(app)
+        .put('/api/usuarios/400000001')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ rolId: rolClienteId });
+      expect(res.status).toBe(403);
+      expect(res.body.message).toMatch(/no puedes cambiar tu propio rol/i);
+    });
+
+    test('un admin no puede desactivar su propia cuenta', async () => {
+      const res = await request(app)
+        .patch('/api/usuarios/400000001/estado')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ estado: false });
+      expect(res.status).toBe(403);
+      expect(res.body.message).toMatch(/no puedes activar o desactivar tu propia cuenta/i);
+    });
+
+    test('un admin normal no puede editar a otro admin', async () => {
+      const res = await request(app)
+        .put(`/api/usuarios/${admin2Documento}`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ nombre: 'Hackeado' });
+      expect(res.status).toBe(403);
+      expect(res.body.message).toMatch(/solo el administrador principal/i);
+    });
+
+    test('un admin normal no puede desactivar a otro admin', async () => {
+      const res = await request(app)
+        .patch(`/api/usuarios/${admin2Documento}/estado`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ estado: false });
+      expect(res.status).toBe(403);
+      expect(res.body.message).toMatch(/solo el administrador principal/i);
+    });
+
+    test('un admin normal no puede eliminar a otro admin', async () => {
+      const res = await request(app)
+        .delete(`/api/usuarios/${admin2Documento}`)
+        .set('Authorization', `Bearer ${adminToken}`);
+      expect(res.status).toBe(403);
+      expect(res.body.message).toMatch(/solo el administrador principal/i);
+    });
+
+    test('un admin normal SÍ puede editar a un cliente (la restricción es solo entre admins)', async () => {
+      const res = await request(app)
+        .put(`/api/usuarios/${clienteDocumento}`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ telefono: '3001112233' });
+      expect(res.status).toBe(200);
+      expect(res.body.data.telefono).toBe('3001112233');
+    });
+
+    test('el administrador principal SÍ puede editar y desactivar a otro admin', async () => {
+      const editar = await request(app)
+        .put(`/api/usuarios/${admin2Documento}`)
+        .set('Authorization', `Bearer ${principalToken}`)
+        .send({ nombre: 'Admin2Editado' });
+      expect(editar.status).toBe(200);
+      expect(editar.body.data.nombre).toBe('Admin2Editado');
+
+      const desactivar = await request(app)
+        .patch(`/api/usuarios/${admin2Documento}/estado`)
+        .set('Authorization', `Bearer ${principalToken}`)
+        .send({ estado: false });
+      expect(desactivar.status).toBe(200);
+      expect(desactivar.body.data.estado).toBe(false);
+    });
   });
 });
