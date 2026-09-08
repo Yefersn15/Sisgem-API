@@ -20,6 +20,7 @@ const bannersRoutes = require('./api/banners/banners.routes');
 const carritoRoutes = require('./api/carrito/carrito.routes');
 const uploadRoutes = require('./api/upload/upload.routes');
 const configuracionRoutes = require('./api/configuracion/configuracion.routes');
+const cajaRoutes = require('./api/caja/caja.routes');
 
 // Configuración de multer para uploads de archivos en memoria
 const storage = multer.memoryStorage();
@@ -88,6 +89,7 @@ app.use('/api/banners', bannersRoutes);
 app.use('/api/carrito', carritoRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/configuracion', configuracionRoutes);
+app.use('/api/caja', cajaRoutes);
 
 // Endpoint informativo de la API: mínima divulgación de información a
 // propósito — no lista los recursos internos montados más abajo.

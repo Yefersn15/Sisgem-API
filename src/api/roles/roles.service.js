@@ -13,6 +13,7 @@ const PERMISOS_DISPONIBLES = [
   'categorias.read', 'categorias.write', 'categorias.delete',
   'marcas.read', 'marcas.write', 'marcas.delete',
   'banners.read', 'banners.write', 'banners.delete',
+  'caja.read', 'caja.write',
   'usuarios.read', 'usuarios.write', 'usuarios.delete',
   'roles.read', 'roles.write', 'roles.delete',
   'config.read', 'config.write',
