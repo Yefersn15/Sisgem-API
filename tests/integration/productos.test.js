@@ -1,6 +1,6 @@
 const request = require('supertest');
 const app = require('../../src/app');
-const { sequelize, Rol, Usuario, Categoria, Producto } = require('../../src/models');
+const { sequelize, Rol, Usuario, Categoria, Producto, Marca } = require('../../src/models');
 
 describe('Productos API', () => {
   let categoria;
@@ -111,5 +111,17 @@ describe('Productos API', () => {
       .post('/api/productos')
       .send({ nombre: 'Sin token', precio: 100, categoriaId: categoria.id });
     expect(res.status).toBe(401);
+  });
+
+  test('un producto creado queda marcado con quién lo creó (solo informativo, no restringe edición)', async () => {
+    const marca = await Marca.create({ nombre: `MARCA-AUTORIA-${Date.now()}` });
+    const res = await request(app)
+      .post('/api/productos')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ nombre: 'Producto Con Autoria', precio: 100, categoriaId: categoria.id, marcaId: marca.id });
+
+    expect(res.status).toBe(201);
+    expect(res.body.data.creadoPorDocumento).toBe('800000001');
+    expect(res.body.data.creadoPorNombre).toBe('Admin');
   });
 });

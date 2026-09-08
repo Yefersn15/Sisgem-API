@@ -25,7 +25,7 @@ exports.listar = async (req, res) => {
 
 exports.crear = async (req, res) => {
   try {
-    const categoria = await service.crear(req.body);
+    const categoria = await service.crear(req.body, req.user);
     return successResponse(res, categoria, 'Categoría creada exitosamente', 201);
   } catch (error) {
     return handleError(res, error);

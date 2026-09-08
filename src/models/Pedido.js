@@ -66,6 +66,19 @@ const Pedido = sequelize.define('Pedido', {
   productos: {
     type: DataTypes.JSONB,
     defaultValue: []
+  },
+  // Solo trazabilidad (quién aprobó/canceló/gestionó por última vez este
+  // pedido): un pedido lo procesan distintos trabajadores según el turno, así
+  // que a propósito no restringe quién puede seguir gestionándolo.
+  ultimaAccionPorDocumento: {
+    type: DataTypes.STRING(20),
+    allowNull: true,
+    field: 'ultima_accion_por_documento'
+  },
+  ultimaAccionPorNombre: {
+    type: DataTypes.STRING(150),
+    allowNull: true,
+    field: 'ultima_accion_por_nombre'
   }
 }, {
   tableName: 'pedidos',

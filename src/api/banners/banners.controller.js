@@ -24,7 +24,7 @@ exports.listar = async (req, res) => {
 
 exports.crear = async (req, res) => {
   try {
-    const banner = await service.crear(req.body);
+    const banner = await service.crear(req.body, req.user);
     return successResponse(res, banner, 'Banner creado exitosamente', 201);
   } catch (error) {
     return handleError(res, error);

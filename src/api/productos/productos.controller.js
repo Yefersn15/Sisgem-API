@@ -25,7 +25,7 @@ exports.listar = async (req, res) => {
 
 exports.crear = async (req, res) => {
   try {
-    const producto = await service.crear(req.body);
+    const producto = await service.crear(req.body, req.user);
     return successResponse(res, producto, 'Producto creado exitosamente', 201);
   } catch (error) {
     return handleError(res, error);

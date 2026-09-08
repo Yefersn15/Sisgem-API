@@ -22,7 +22,7 @@ exports.listar = async (req, res) => {
 
 exports.crear = async (req, res) => {
   try {
-    const pago = await service.crear(req.body);
+    const pago = await service.crear(req.body, req.user);
     return successResponse(res, pago, 'Pago registrado', 201);
   } catch (error) {
     return handleError(res, error);
@@ -40,7 +40,7 @@ exports.verDetalle = async (req, res) => {
 
 exports.actualizar = async (req, res) => {
   try {
-    const pago = await service.actualizar(req.params.id, req.body);
+    const pago = await service.actualizar(req.params.id, req.body, req.user);
     return successResponse(res, pago, 'Pago actualizado');
   } catch (error) {
     return handleError(res, error);
@@ -49,7 +49,7 @@ exports.actualizar = async (req, res) => {
 
 exports.cambiarEstado = async (req, res) => {
   try {
-    const pago = await service.cambiarEstado(req.params.id, req.body.estado);
+    const pago = await service.cambiarEstado(req.params.id, req.body.estado, req.user);
     return successResponse(res, pago, 'Estado actualizado');
   } catch (error) {
     return handleError(res, error);
@@ -67,7 +67,7 @@ exports.misPagos = async (req, res) => {
 
 exports.eliminar = async (req, res) => {
   try {
-    await service.eliminar(req.params.id);
+    await service.eliminar(req.params.id, req.user);
     return successResponse(res, null, 'Pago eliminado');
   } catch (error) {
     return handleError(res, error);

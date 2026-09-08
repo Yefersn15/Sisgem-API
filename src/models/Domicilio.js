@@ -63,6 +63,20 @@ const Domicilio = sequelize.define('Domicilio', {
     type: DataTypes.JSONB,
     defaultValue: {},
     field: 'datos_front'
+  },
+  // Solo trazabilidad (qué trabajador asignó el repartidor o gestionó el
+  // domicilio por última vez desde el panel admin) — distinto del propio
+  // repartidor (columna `repartidor`), y sin restringir quién más puede
+  // seguir gestionándolo por la misma razón que Pedido.ultimaAccionPor.
+  gestionadoPorDocumento: {
+    type: DataTypes.STRING(20),
+    allowNull: true,
+    field: 'gestionado_por_documento'
+  },
+  gestionadoPorNombre: {
+    type: DataTypes.STRING(150),
+    allowNull: true,
+    field: 'gestionado_por_nombre'
   }
 }, {
   tableName: 'domicilios',

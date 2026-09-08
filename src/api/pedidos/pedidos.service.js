@@ -4,6 +4,15 @@ const repository = require('./pedidos.repository');
 const AppError = require('../../utils/AppError');
 const pagosService = require('../pagos/pagos.service');
 
+// Solo trazabilidad de qué trabajador aprobó/canceló/gestionó por última vez
+// este pedido (se muestra en el detalle); a propósito no restringe quién más
+// puede seguir gestionándolo, porque distintos trabajadores por turno
+// procesan los mismos pedidos de los clientes.
+const marcarUltimaAccion = (requester) => ({
+  ultimaAccionPorDocumento: requester?.documento || null,
+  ultimaAccionPorNombre: requester?.nombre || null,
+});
+
 const TRANSICIONES_PEDIDO = {
   'Pendiente': ['aprobado', 'cancelado'],
   'aprobado': ['en_preparacion', 'cancelado'],
@@ -118,7 +127,7 @@ const descontarStock = async (productos, t) => {
   }
 };
 
-exports.cambiarEstadoPedido = async (id, estadoPedido) => {
+exports.cambiarEstadoPedido = async (id, estadoPedido, requester) => {
   const t = await sequelize.transaction();
   try {
     const pedido = await repository.findById(id, { transaction: t });
@@ -129,7 +138,7 @@ exports.cambiarEstadoPedido = async (id, estadoPedido) => {
       throw new AppError(`No se puede pasar de ${pedido.estadoPedido} a ${estadoPedido}`, 400);
     }
 
-    await pedido.update({ estadoPedido }, { transaction: t });
+    await pedido.update({ estadoPedido, ...marcarUltimaAccion(requester) }, { transaction: t });
 
     if (estadoPedido === 'entregado') {
       await pagosService.actualizarTotalPagado(pedido.id, t);
@@ -172,7 +181,7 @@ exports.verDetalle = async (id, user) => {
   return pedido;
 };
 
-exports.aprobarAbono = async (id) => {
+exports.aprobarAbono = async (id, requester) => {
   const t = await sequelize.transaction();
   try {
     const pedido = await repository.findById(id, { transaction: t });
@@ -185,7 +194,7 @@ exports.aprobarAbono = async (id) => {
       if (domicilioExistente) throw new AppError('Ya existe un domicilio para este pedido', 400);
     }
 
-    await pedido.update({ estadoPedido: 'aprobado' }, { transaction: t });
+    await pedido.update({ estadoPedido: 'aprobado', ...marcarUltimaAccion(requester) }, { transaction: t });
 
     if (pedido.tipoVenta === 'domicilio') {
       const direccion = pedido.direccion;
@@ -211,7 +220,7 @@ exports.aprobarAbono = async (id) => {
   }
 };
 
-exports.convertirAVenta = async (id) => {
+exports.convertirAVenta = async (id, requester) => {
   const t = await sequelize.transaction();
   try {
     const pedido = await repository.findById(id, { transaction: t });
@@ -221,7 +230,7 @@ exports.convertirAVenta = async (id) => {
     if (pedido.estadoPedido !== 'Pendiente') throw new AppError('El pedido ya fue procesado', 400);
 
     await descontarStock(pedido.productos, t);
-    await pedido.update({ esVenta: true, estadoVenta: 'completada' }, { transaction: t });
+    await pedido.update({ esVenta: true, estadoVenta: 'completada', ...marcarUltimaAccion(requester) }, { transaction: t });
 
     await t.commit();
     return pedido;
@@ -255,16 +264,16 @@ exports.eliminar = async (id) => {
   await pedido.destroy();
 };
 
-exports.cancelar = async (id) => {
+exports.cancelar = async (id, requester) => {
   const pedido = await repository.findById(id);
   if (!pedido) throw new AppError('Pedido no encontrado', 404);
   if (pedido.esVenta) throw new AppError('No se puede cancelar una venta', 400);
 
-  await pedido.update({ estadoPedido: 'cancelado' });
+  await pedido.update({ estadoPedido: 'cancelado', ...marcarUltimaAccion(requester) });
   return pedido;
 };
 
-exports.aprobarPedido = async (id) => {
+exports.aprobarPedido = async (id, requester) => {
   const t = await sequelize.transaction();
   try {
     const pedido = await repository.findById(id, { transaction: t });
@@ -272,7 +281,7 @@ exports.aprobarPedido = async (id) => {
     if (pedido.estadoPedido !== 'Pendiente') throw new AppError('El pedido ya fue procesado', 400);
 
     await descontarStock(pedido.productos, t);
-    await pedido.update({ estadoPedido: 'aprobado' }, { transaction: t });
+    await pedido.update({ estadoPedido: 'aprobado', ...marcarUltimaAccion(requester) }, { transaction: t });
 
     await t.commit();
     return pedido;
@@ -282,7 +291,7 @@ exports.aprobarPedido = async (id) => {
   }
 };
 
-exports.rechazarAbono = async (id, motivo) => {
+exports.rechazarAbono = async (id, motivo, requester) => {
   const pedido = await repository.findById(id);
   if (!pedido) throw new AppError('Pedido no encontrado', 404);
   if (pedido.esVenta) throw new AppError('No es un pedido por abono', 400);
@@ -291,7 +300,8 @@ exports.rechazarAbono = async (id, motivo) => {
 
   await pedido.update({
     estadoPedido: 'rechazado',
-    observaciones: motivo ? `${pedido.observaciones || ''}\n[RECHAZADO]: ${motivo}`.trim() : pedido.observaciones
+    observaciones: motivo ? `${pedido.observaciones || ''}\n[RECHAZADO]: ${motivo}`.trim() : pedido.observaciones,
+    ...marcarUltimaAccion(requester)
   });
 
   return pedido;

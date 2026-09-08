@@ -123,7 +123,7 @@ exports.listar = async ({ isStaff, pagination }) => {
   return { rows: resueltos, count };
 };
 
-exports.crear = async (data) => {
+exports.crear = async (data, requester) => {
   const { layout, images, titulo, texto, textPosition, displayOrder, estado, contentType, contentRefs } = data;
 
   const errorValidacion = validarBanner({ layout, images, textPosition, contentType, contentRefs });
@@ -139,6 +139,8 @@ exports.crear = async (data) => {
     textPosition: textPosition || 'none',
     displayOrder: displayOrder || 0,
     estado: estado !== undefined ? estado : true,
+    creadoPorDocumento: requester?.documento || null,
+    creadoPorNombre: requester?.nombre || null,
   });
 };
 

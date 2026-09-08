@@ -39,7 +39,7 @@ exports.verDetalle = async (req, res) => {
 
 exports.cambiarEstado = async (req, res) => {
   try {
-    const domicilio = await service.cambiarEstado(req.params.id, req.body);
+    const domicilio = await service.cambiarEstado(req.params.id, req.body, req.user);
     return successResponse(res, domicilio, 'Estado actualizado');
   } catch (error) {
     return handleError(res, error);
@@ -48,7 +48,7 @@ exports.cambiarEstado = async (req, res) => {
 
 exports.asignarRepartidor = async (req, res) => {
   try {
-    const domicilio = await service.asignarRepartidor(req.params.id, req.body);
+    const domicilio = await service.asignarRepartidor(req.params.id, req.body, req.user);
     return successResponse(res, domicilio, 'Repartidor asignado/actualizado');
   } catch (error) {
     return handleError(res, error);
@@ -84,7 +84,7 @@ exports.misPedidosDomicilio = async (req, res) => {
 
 exports.actualizar = async (req, res) => {
   try {
-    const domicilio = await service.actualizar(req.params.id, req.body);
+    const domicilio = await service.actualizar(req.params.id, req.body, req.user);
     return successResponse(res, domicilio, 'Domicilio actualizado');
   } catch (error) {
     return handleError(res, error);
@@ -93,7 +93,7 @@ exports.actualizar = async (req, res) => {
 
 exports.actualizarTarifa = async (req, res) => {
   try {
-    const domicilio = await service.actualizarTarifa(req.params.id, req.body.tarifa);
+    const domicilio = await service.actualizarTarifa(req.params.id, req.body.tarifa, req.user);
     return successResponse(res, domicilio, 'Tarifa actualizada');
   } catch (error) {
     return handleError(res, error);

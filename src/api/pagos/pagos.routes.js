@@ -15,5 +15,9 @@ router.post('/', verifyToken, checkRoleOrPermission(['ADMIN'], 'pagos.write'), c
 router.get('/:id', verifyToken, checkRoleOrPermission(['ADMIN'], 'pagos.read'), pagosController.verDetalle);
 router.put('/:id', verifyToken, checkRoleOrPermission(['ADMIN'], 'pagos.write'), pagosController.actualizar);
 router.patch('/:id/estado', verifyToken, checkRoleOrPermission(['ADMIN'], 'pagos.write'), pagosController.cambiarEstado);
+// pagosController.eliminar existía sin ruta que la usara: el permiso
+// pagos.delete estaba declarado en PERMISOS_DISPONIBLES pero no había forma
+// de llegar a él por HTTP.
+router.delete('/:id', verifyToken, checkRoleOrPermission(['ADMIN'], 'pagos.delete'), pagosController.eliminar);
 
 module.exports = router;

@@ -89,7 +89,7 @@ exports.obtenerPorId = async (id) => {
   return domicilio;
 };
 
-exports.cambiarEstado = async (id, { estado, tarifa_aplicada, forzar }) => {
+exports.cambiarEstado = async (id, { estado, tarifa_aplicada, forzar }, requester) => {
   const t = await sequelize.transaction();
   try {
     const domicilio = await repository.findByIdConPedido(id, { transaction: t });
@@ -126,7 +126,7 @@ exports.cambiarEstado = async (id, { estado, tarifa_aplicada, forzar }) => {
       throw new AppError(`No se puede pasar de ${domicilio.estado} a ${estado}`, 400);
     }
 
-    const updateData = { estado };
+    const updateData = { estado, gestionadoPorDocumento: requester?.documento || null, gestionadoPorNombre: requester?.nombre || null };
     if (estado === 'entregado') {
       updateData.fechaAsignacion = new Date();
       const pedidoActual = await Pedido.findByPk(domicilio.pedidoId, { transaction: t });
@@ -175,13 +175,13 @@ exports.misPedidosDomicilio = async (usuarioId) => {
   return repository.findAllPorPedidosConUsuario(pedidosIds);
 };
 
-exports.actualizar = async (id, body) => {
+exports.actualizar = async (id, body, requester) => {
   const t = await sequelize.transaction();
   try {
     const domicilio = await repository.findByIdConPedido(id, { transaction: t });
     if (!domicilio) throw new AppError('Domicilio no encontrado', 404);
 
-    const data = { ...body };
+    const data = { ...body, gestionadoPorDocumento: requester?.documento || null, gestionadoPorNombre: requester?.nombre || null };
 
     if (data.direccion && typeof data.direccion === 'object') {
       data.direccion = JSON.stringify({
@@ -228,7 +228,7 @@ exports.actualizar = async (id, body) => {
   }
 };
 
-exports.actualizarTarifa = async (id, tarifa) => {
+exports.actualizarTarifa = async (id, tarifa, requester) => {
   const t = await sequelize.transaction();
   try {
     const domicilio = await repository.findById(id, { transaction: t });
@@ -236,7 +236,12 @@ exports.actualizarTarifa = async (id, tarifa) => {
 
     const diferencia = tarifa - domicilio.tarifaAplicada;
     await Pedido.update({ total: sequelize.literal(`total + ${diferencia}`) }, { where: { id: domicilio.pedidoId }, transaction: t });
-    await repository.updateById(id, { costo: tarifa, tarifaAplicada: tarifa }, { transaction: t });
+    await repository.updateById(id, {
+      costo: tarifa,
+      tarifaAplicada: tarifa,
+      gestionadoPorDocumento: requester?.documento || null,
+      gestionadoPorNombre: requester?.nombre || null,
+    }, { transaction: t });
 
     await t.commit();
     return repository.findById(id);

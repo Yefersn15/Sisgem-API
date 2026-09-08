@@ -3,6 +3,21 @@ const { Pedido, sequelize } = require('../../models');
 const repository = require('./pagos.repository');
 const AppError = require('../../utils/AppError');
 
+const esAdmin = (rol) => rol === 'ADMIN' || rol === 'ADMINISTRADOR';
+
+// Un pago representa dinero real ya recibido: solo quien lo registró o un
+// ADMIN puede corregirlo/eliminarlo después (a diferencia de Pedido/
+// Domicilio, que varios trabajadores por turno necesitan poder seguir
+// gestionando sin importar quién los tocó primero). Un pago sin
+// registradoPorDocumento (creado antes de esta migración) solo lo puede
+// tocar un ADMIN, porque no hay forma de saber quién lo registró.
+const verificarPuedeModificarPago = (pago, requester) => {
+  if (!requester) return;
+  if (esAdmin(requester.rol)) return;
+  if (pago.registradoPorDocumento && pago.registradoPorDocumento === requester.documento) return;
+  throw new AppError('Solo quien registró este pago o un administrador puede modificarlo', 403);
+};
+
 // Recalcula el total pagado de un pedido a partir de sus pagos "aplicado"/
 // "pendiente", y lo convierte a venta si ya quedó completamente pagado y
 // entregado. Se exporta porque pedidos.service y domicilios.service también
@@ -60,7 +75,7 @@ exports.listar = async ({ isStaff, documento, pedido, estado, metodo, pagination
   return repository.findAndCountAll({ where, pagination });
 };
 
-exports.crear = async (data) => {
+exports.crear = async (data, requester) => {
   const { pedidoId, monto, metodo, estado, referencia, notas, tipo } = data;
   const t = await sequelize.transaction();
 
@@ -82,7 +97,9 @@ exports.crear = async (data) => {
       pedidoId, monto, metodo,
       estado: estado || 'Pendiente',
       referencia, notas,
-      tipo: tipo || 'pago_total'
+      tipo: tipo || 'pago_total',
+      registradoPorDocumento: requester?.documento || null,
+      registradoPorNombre: requester?.nombre || null,
     }, { transaction: t });
 
     if (nuevoPago.estado === 'aplicado') {
@@ -108,13 +125,14 @@ exports.obtenerPorId = async (id) => {
   return pago;
 };
 
-exports.actualizar = async (id, data) => {
+exports.actualizar = async (id, data, requester) => {
   const { monto, metodo, estado, referencia, notas, tipo } = data;
   const t = await sequelize.transaction();
 
   try {
     const pago = await repository.findById(id, { transaction: t });
     if (!pago) throw new AppError('Pago no encontrado', 404);
+    verificarPuedeModificarPago(pago, requester);
 
     const oldEstado = pago.estado;
     await pago.update({
@@ -145,12 +163,13 @@ exports.actualizar = async (id, data) => {
   }
 };
 
-exports.cambiarEstado = async (id, estado) => {
+exports.cambiarEstado = async (id, estado, requester) => {
   const t = await sequelize.transaction();
 
   try {
     const pago = await repository.findById(id, { transaction: t });
     if (!pago) throw new AppError('Pago no encontrado', 404);
+    verificarPuedeModificarPago(pago, requester);
 
     const oldEstado = pago.estado;
     await pago.update({ estado }, { transaction: t });
@@ -181,8 +200,9 @@ exports.misPagos = async (documento) => {
   return repository.findByPedidoIds(pedidosIds);
 };
 
-exports.eliminar = async (id) => {
+exports.eliminar = async (id, requester) => {
   const pago = await repository.findById(id);
   if (!pago) throw new AppError('Pago no encontrado', 404);
+  verificarPuedeModificarPago(pago, requester);
   await pago.destroy();
 };

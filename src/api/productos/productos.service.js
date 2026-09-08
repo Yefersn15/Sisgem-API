@@ -21,7 +21,7 @@ exports.listar = async ({ isStaff, estado, categoria, marca, search, pagination 
   return repository.findAndCountAll({ where, pagination });
 };
 
-exports.crear = async (data) => {
+exports.crear = async (data, requester) => {
   const { categoriaId, marcaId } = data;
 
   if (categoriaId) {
@@ -45,6 +45,8 @@ exports.crear = async (data) => {
     stockMinimo: data.stockMinimo || 0,
     precioCompra: data.precioCompra,
     codigoBarras: data.codigoBarras,
+    creadoPorDocumento: requester?.documento || null,
+    creadoPorNombre: requester?.nombre || null,
   });
 
   return repository.findByIdConRelaciones(nuevo.id);

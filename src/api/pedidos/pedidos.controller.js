@@ -19,7 +19,7 @@ exports.crear = async (req, res) => {
 
 exports.cambiarEstadoPedido = async (req, res) => {
   try {
-    const pedido = await service.cambiarEstadoPedido(req.params.id, req.body.estado_pedido);
+    const pedido = await service.cambiarEstadoPedido(req.params.id, req.body.estado_pedido, req.user);
     return successResponse(res, pedido, 'Estado actualizado');
   } catch (error) {
     return handleError(res, error);
@@ -67,7 +67,7 @@ exports.verDetalle = async (req, res) => {
 
 exports.aprobarAbono = async (req, res) => {
   try {
-    const pedido = await service.aprobarAbono(req.params.id);
+    const pedido = await service.aprobarAbono(req.params.id, req.user);
     return successResponse(res, pedido, 'Pedido aprobado - flujo de domicilio');
   } catch (error) {
     return handleError(res, error);
@@ -76,7 +76,7 @@ exports.aprobarAbono = async (req, res) => {
 
 exports.convertirAVenta = async (req, res) => {
   try {
-    const pedido = await service.convertirAVenta(req.params.id);
+    const pedido = await service.convertirAVenta(req.params.id, req.user);
     return successResponse(res, pedido, 'Convertido a venta');
   } catch (error) {
     return handleError(res, error);
@@ -103,7 +103,7 @@ exports.eliminar = async (req, res) => {
 
 exports.cancelar = async (req, res) => {
   try {
-    const pedido = await service.cancelar(req.params.id);
+    const pedido = await service.cancelar(req.params.id, req.user);
     return successResponse(res, pedido, 'Pedido cancelado');
   } catch (error) {
     return handleError(res, error);
@@ -112,7 +112,7 @@ exports.cancelar = async (req, res) => {
 
 exports.aprobarPedido = async (req, res) => {
   try {
-    const pedido = await service.aprobarPedido(req.params.id);
+    const pedido = await service.aprobarPedido(req.params.id, req.user);
     return successResponse(res, pedido, 'Pedido aprobado');
   } catch (error) {
     return handleError(res, error);
@@ -121,7 +121,7 @@ exports.aprobarPedido = async (req, res) => {
 
 exports.rechazarAbono = async (req, res) => {
   try {
-    const pedido = await service.rechazarAbono(req.params.id, req.body.motivo);
+    const pedido = await service.rechazarAbono(req.params.id, req.body.motivo, req.user);
     return successResponse(res, pedido, 'Abono rechazado');
   } catch (error) {
     return handleError(res, error);

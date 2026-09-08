@@ -16,7 +16,7 @@ exports.listar = async ({ isStaff, estado, pagination }) => {
   return repository.findAndCountAll({ where, pagination });
 };
 
-exports.crear = async (data) => {
+exports.crear = async (data, requester) => {
   const { nombre, descripcion } = data;
 
   const existeCategoria = await repository.findByNombre(nombre.toUpperCase());
@@ -25,6 +25,8 @@ exports.crear = async (data) => {
   return repository.create({
     nombre: nombre.toUpperCase(),
     descripcion,
+    creadoPorDocumento: requester?.documento || null,
+    creadoPorNombre: requester?.nombre || null,
   });
 };
 

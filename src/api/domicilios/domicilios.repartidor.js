@@ -8,7 +8,7 @@ const { Pedido, Usuario, sequelize } = require('../../models');
 const repository = require('./domicilios.repository');
 const AppError = require('../../utils/AppError');
 
-exports.asignarRepartidor = async (id, data) => {
+exports.asignarRepartidor = async (id, data, requester) => {
   const { repartidor, repartidorId, tarifa, telefono, tipoVehiculo, placa, nombre } = data;
   const t = await sequelize.transaction();
 
@@ -48,7 +48,13 @@ exports.asignarRepartidor = async (id, data) => {
       }
     }
 
-    const updateData = { repartidor: repartidorObj, repartidorId: repartidorId || null, fechaAsignacion: new Date() };
+    const updateData = {
+      repartidor: repartidorObj,
+      repartidorId: repartidorId || null,
+      fechaAsignacion: new Date(),
+      gestionadoPorDocumento: requester?.documento || null,
+      gestionadoPorNombre: requester?.nombre || null,
+    };
     if (tarifa !== undefined && tarifa !== null) {
       const tarifaNum = parseFloat(String(tarifa).replace(/[^0-9.-]/g, ''));
       if (!isNaN(tarifaNum)) {
