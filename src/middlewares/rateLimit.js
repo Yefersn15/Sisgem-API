@@ -5,9 +5,20 @@ const { rateLimit, ipKeyGenerator } = require('express-rate-limit');
 // producción sin tocar código, y para que la suite de tests use límites
 // generosos y no se auto-bloquee con su propio flujo normal). Los valores
 // por defecto son los pensados para producción.
+//
+// `parseInt` NO exige que todo el texto sea un número: solo lee los dígitos
+// del principio y corta ahí ("9b907dcf..." se convierte en 9 en vez de
+// fallar). Eso causó justamente el bug de producción que motivó este
+// comentario: alguien generó por error un valor aleatorio (tipo hash) para
+// estas variables en vez de dejarlas vacías o poner un número, y la app
+// terminó aplicando límites de 9/38/28 solicitudes sin que nada avisara del
+// problema. Por eso aquí se exige que el valor completo sean solo dígitos
+// antes de intentar convertirlo — cualquier otra cosa cae al valor por
+// defecto en silencio, que es el comportamiento seguro.
 const num = (value, fallback) => {
+  if (!/^\d+$/.test(String(value ?? '').trim())) return fallback;
   const parsed = parseInt(value, 10);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+  return parsed > 0 ? parsed : fallback;
 };
 
 // apiLimiter se monta en app.js ANTES que el verifyToken de cada ruta (así
