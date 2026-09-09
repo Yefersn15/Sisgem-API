@@ -41,6 +41,16 @@ const apiLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: (req) => documentoDelToken(req) || ipKeyGenerator(req.ip),
+  // handler explícito (en vez de solo `message`) para dejar un rastro en los
+  // logs cada vez que ESTE limitador es quien de verdad bloquea una
+  // solicitud — necesario para poder distinguirlo de un 429 que llegue
+  // impuesto por algo delante de la app (el proxy de Render, por ejemplo),
+  // que nunca pasaría por aquí y por lo tanto nunca dejaría este log.
+  handler: (req, res, next, options) => {
+    const key = documentoDelToken(req) || req.ip;
+    console.warn(`[apiLimiter] Límite alcanzado: ${req.method} ${req.originalUrl} (key=${key})`);
+    res.status(options.statusCode).json(options.message);
+  },
   message: { success: false, message: 'Demasiadas solicitudes. Intenta de nuevo en unos minutos.', status: 429 },
 });
 
