@@ -46,6 +46,7 @@ const ROLES_BASE = [
       'ventas.read',
       'domicilios.read', 'domicilios.write',
       'caja.read',
+      'pagos.read',
       'reportes.read'
     ],
     esDefault: false,
@@ -53,13 +54,14 @@ const ROLES_BASE = [
   },
   {
     nombre: 'CAJERO',
-    descripcion: 'Repone inventario, habilita/deshabilita productos, marcas y categorías, asigna repartidores a los domicilios y opera la caja (abrir/cerrar).',
+    descripcion: 'Repone inventario, habilita/deshabilita productos, marcas y categorías, asigna repartidores a los domicilios, opera la caja (abrir/cerrar) y registra los pagos/abonos que recibe.',
     permisos: [
       'productos.read', 'productos.write',
       'marcas.read', 'marcas.write',
       'categorias.read', 'categorias.write',
       'domicilios.read', 'domicilios.write',
-      'caja.read', 'caja.write'
+      'caja.read', 'caja.write',
+      'pagos.read', 'pagos.write'
     ],
     esDefault: false,
     estado: true

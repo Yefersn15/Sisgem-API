@@ -11,7 +11,14 @@ const handleError = (res, error) => {
 exports.listar = async (req, res) => {
   try {
     const { pedido, estado, metodo } = req.query;
-    const isStaff = req.user && ['ADMIN', 'EMPLEADO'].includes(req.user.rol);
+    // Esta ruta ya exige el permiso 'pagos.read' (ver pagos.routes.js), así
+    // que quien llega hasta aquí siempre es staff autorizado a ver todos los
+    // pagos. Antes se volvía a filtrar por un nombre de rol hardcodeado
+    // ('ADMIN'/'EMPLEADO', este último ya ni existe), así que cualquier otro
+    // rol con permiso real de lectura (ej. GERENTE, CAJERO) terminaba viendo
+    // la lista recortada como si fuera un cliente viendo solo sus propios
+    // pedidos.
+    const isStaff = true;
     const pagination = getPagination(req);
     const { rows, count } = await service.listar({ isStaff, documento: req.user.documento, pedido, estado, metodo, pagination });
     return paginatedResponse(res, { rows, count }, pagination);
