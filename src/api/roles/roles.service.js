@@ -3,22 +3,7 @@
 const { Usuario } = require('../../models');
 const repository = require('./roles.repository');
 const AppError = require('../../utils/AppError');
-
-const PERMISOS_DISPONIBLES = [
-  'ventas.read', 'ventas.write', 'ventas.delete',
-  'pedidos.read', 'pedidos.write', 'pedidos.delete',
-  'pagos.read', 'pagos.write', 'pagos.delete',
-  'domicilios.read', 'domicilios.write', 'domicilios.delete',
-  'productos.read', 'productos.write', 'productos.delete',
-  'categorias.read', 'categorias.write', 'categorias.delete',
-  'marcas.read', 'marcas.write', 'marcas.delete',
-  'banners.read', 'banners.write', 'banners.delete',
-  'caja.read', 'caja.write',
-  'usuarios.read', 'usuarios.write', 'usuarios.delete',
-  'roles.read', 'roles.write', 'roles.delete',
-  'config.read', 'config.write',
-  'reportes.read'
-];
+const { PERMISOS_DISPONIBLES, ROLES_BASE } = require('../../constants/permisos');
 
 exports.seedRoles = async () => {
   const existingRoles = await repository.findAll();
@@ -32,13 +17,7 @@ exports.seedRoles = async () => {
         esDefault: false,
         estado: true
       },
-      {
-        nombre: 'USUARIO',
-        descripcion: 'Cliente que puede realizar compras',
-        permisos: ['perfil.read', 'perfil.write', 'pedidos.read'],
-        esDefault: true,
-        estado: true
-      }
+      ...ROLES_BASE
     ];
 
     for (const role of rolesData) {
@@ -114,7 +93,7 @@ exports.eliminar = async (id) => {
   const rol = await repository.findById(id);
   if (!rol) throw new AppError('Rol no encontrado', 404);
 
-  if (rol.nombre === 'ADMIN') {
+  if (rol.nombre === 'ADMIN' || rol.nombre === 'ADMINISTRADOR') {
     throw new AppError('No se puede eliminar el rol ADMIN', 400);
   }
 
@@ -130,7 +109,7 @@ exports.cambiarEstado = async (id, estado) => {
   const rol = await repository.findById(id);
   if (!rol) throw new AppError('Rol no encontrado', 404);
 
-  if (rol.nombre === 'ADMIN') {
+  if (rol.nombre === 'ADMIN' || rol.nombre === 'ADMINISTRADOR') {
     throw new AppError('No se puede desactivar el rol ADMIN', 400);
   }
 

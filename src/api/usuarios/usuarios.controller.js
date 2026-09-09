@@ -21,7 +21,7 @@ exports.listar = async (req, res) => {
 
 exports.crear = async (req, res) => {
   try {
-    const usuario = await service.crear(req.body);
+    const usuario = await service.crear(req.body, req.user);
     return successResponse(res, usuario, 'Usuario creado exitosamente', 201);
   } catch (error) {
     return handleError(res, error);

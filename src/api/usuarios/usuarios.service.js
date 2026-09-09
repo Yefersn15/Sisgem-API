@@ -33,7 +33,7 @@ exports.listar = async ({ estado, rol, search, pagination }) => {
   return repository.findAndCountAll({ where, pagination });
 };
 
-exports.crear = async (data) => {
+exports.crear = async (data, requester) => {
   const { nombre, email, password, telefono, apellido, rolId, documento, tipoDocumento, genero, direccion, barrio, fotoUrl } = data;
 
   const existeUsuario = await repository.findByEmail(email);
@@ -48,6 +48,16 @@ exports.crear = async (data) => {
   if (!defaultRolId) {
     const defaultRol = await Rol.findOne({ where: { esDefault: true, estado: true } });
     defaultRolId = defaultRol ? defaultRol.id : 1;
+  }
+
+  // Sin este chequeo, cualquier usuario con permiso usuarios.write (por
+  // ejemplo un rol GERENTE, pensado para tener un subconjunto acotado de
+  // permisos) podría crear una cuenta nueva con rol ADMIN y quedar con
+  // acceso total sin restricciones — el mismo criterio que ya protege
+  // actualizar/eliminar/cambiarEstado de cuentas admin existentes.
+  const rolDestino = await Rol.findByPk(defaultRolId);
+  if (rolDestino && esNombreAdmin(rolDestino.nombre) && !(await requesterEsAdminPrincipal(requester))) {
+    throw new AppError('Solo el administrador principal puede crear una cuenta con rol de administrador', 403);
   }
 
   const nuevoUsuario = await repository.create({
@@ -120,6 +130,17 @@ exports.actualizar = async (id, data, requester) => {
     const targetEsAdmin = usuario.rol && esNombreAdmin(usuario.rol.nombre);
     if (targetEsAdmin && requester && !esSelfEdit && !(await requesterEsAdminPrincipal(requester))) {
       throw new AppError('Solo el administrador principal puede modificar la cuenta de otro administrador.', 403);
+    }
+
+    // El chequeo de arriba mira el rol ACTUAL del usuario; esto cubre el caso
+    // contrario, ascender a alguien que hoy NO es admin (ej. un CLIENTE o
+    // GERENTE) a un rol admin — sin esto, un GERENTE con usuarios.write podría
+    // autopromoverse o promover a un tercero a ADMIN editando el rolId.
+    if (cambiaRol && !(await requesterEsAdminPrincipal(requester))) {
+      const rolDestino = await Rol.findByPk(rolId);
+      if (rolDestino && esNombreAdmin(rolDestino.nombre)) {
+        throw new AppError('Solo el administrador principal puede asignar el rol de administrador.', 403);
+      }
     }
   }
 

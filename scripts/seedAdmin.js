@@ -7,24 +7,9 @@
 // ya haya cambiado).
 require('dotenv').config();
 const { sequelize, Rol, Usuario } = require('../src/models');
+const { PERMISOS_DISPONIBLES, ROLES_BASE } = require('../src/constants/permisos');
 
 const REQUERIDAS = ['ADMIN_DOCUMENTO', 'ADMIN_EMAIL', 'ADMIN_PASSWORD', 'ADMIN_NOMBRE', 'ADMIN_APELLIDO'];
-
-const PERMISOS_ADMIN = [
-  'ventas.read', 'ventas.write', 'ventas.delete',
-  'pedidos.read', 'pedidos.write', 'pedidos.delete',
-  'pagos.read', 'pagos.write', 'pagos.delete',
-  'domicilios.read', 'domicilios.write', 'domicilios.delete',
-  'productos.read', 'productos.write', 'productos.delete',
-  'categorias.read', 'categorias.write', 'categorias.delete',
-  'marcas.read', 'marcas.write', 'marcas.delete',
-  'banners.read', 'banners.write', 'banners.delete',
-  'caja.read', 'caja.write',
-  'usuarios.read', 'usuarios.write', 'usuarios.delete',
-  'roles.read', 'roles.write', 'roles.delete',
-  'config.read', 'config.write',
-  'reportes.read',
-];
 
 const run = async () => {
   const faltantes = REQUERIDAS.filter((key) => !process.env[key]);
@@ -56,11 +41,21 @@ const run = async () => {
     defaults: {
       nombre: 'ADMIN',
       descripcion: 'Administrador del sistema con acceso total',
-      permisos: PERMISOS_ADMIN,
+      permisos: PERMISOS_DISPONIBLES,
       esDefault: false,
       estado: true,
     },
   });
+
+  // Roles base (GERENTE, CAJERO, DOMICILIARIO, CLIENTE): se crean junto con
+  // ADMIN para que un despliegue nuevo (o uno ya existente, corriendo este
+  // script de nuevo) siempre tenga los 5 roles disponibles para asignar
+  // desde el panel. findOrCreate es idempotente: si un rol con ese nombre
+  // ya existe (por ejemplo porque un admin ya editó sus permisos desde la
+  // UI), no lo toca.
+  for (const roleData of ROLES_BASE) {
+    await Rol.findOrCreate({ where: { nombre: roleData.nombre }, defaults: roleData });
+  }
 
   const existente = await Usuario.findOne({ where: { email: ADMIN_EMAIL } });
   if (existente) {

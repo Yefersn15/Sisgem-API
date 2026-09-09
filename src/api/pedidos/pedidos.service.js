@@ -1,8 +1,20 @@
 // Lógica de negocio y acceso a datos de pedidos. No conoce Express.
-const { Producto, Domicilio, sequelize } = require('../../models');
+const { Producto, Domicilio, Rol, sequelize } = require('../../models');
 const repository = require('./pedidos.repository');
 const AppError = require('../../utils/AppError');
 const pagosService = require('../pagos/pagos.service');
+
+// La ruta GET /pedidos/:id no exige ningún permiso puntual (a propósito: la
+// usa tanto un cliente viendo su propio pedido como el panel de gestión
+// viendo cualquiera), así que el filtro real vive aquí. El JWT solo trae el
+// nombre del rol (ver auth.service.js::login), no su lista de permisos, por
+// eso se consulta el rol en BD — igual que allowSelfOrAdmin/checkPermission
+// en middlewares/auth.js.
+const puedeVerCualquierPedido = async (rolNombre) => {
+  if (rolNombre === 'ADMIN' || rolNombre === 'ADMINISTRADOR') return true;
+  const rol = await Rol.findOne({ where: { nombre: rolNombre } });
+  return Boolean(rol?.permisos?.includes('pedidos.read'));
+};
 
 // Solo trazabilidad de qué trabajador aprobó/canceló/gestionó por última vez
 // este pedido (se muestra en el detalle); a propósito no restringe quién más
@@ -173,8 +185,8 @@ exports.verDetalle = async (id, user) => {
   const pedido = await repository.findByIdConUsuarioCompleto(id);
   if (!pedido) throw new AppError('Pedido no encontrado', 404);
 
-  const esAdmin = user.rol === 'ADMIN' || user.rol === 'ADMINISTRADOR';
-  if (!esAdmin && pedido.usuarioId !== user.documento) {
+  const puedeVerTodos = await puedeVerCualquierPedido(user.rol);
+  if (!puedeVerTodos && pedido.usuarioId !== user.documento) {
     throw new AppError('No autorizado', 403);
   }
 
