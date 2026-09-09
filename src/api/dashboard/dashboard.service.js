@@ -233,6 +233,10 @@ exports.resumen = async () => {
 
   const usuariosActivos = await Usuario.count({ where: { estado: true } });
 
+  const domiciliosPendientes = await Domicilio.count({
+    where: { estado: { [Op.in]: ['Pendiente', 'pendiente', 'aprobado', 'asignado', 'en_camino'] } }
+  });
+
   return {
     ventasHoy,
     pedidosHoy: pedidosHoy.length,
@@ -243,6 +247,7 @@ exports.resumen = async () => {
     productosActivos,
     productosStockBajo,
     pedidosPendientes,
-    usuariosActivos
+    usuariosActivos,
+    domiciliosPendientes
   };
 };
